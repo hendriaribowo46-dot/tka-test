@@ -18,8 +18,7 @@ import {
   onAuthStateChanged 
 } from 'firebase/auth'; 
 
-// --- DEFINISI IKON LOKAL (MENGGANTIKAN LUCIDE-REACT) ---
-// Menggunakan SVG inline untuk menghindari error dependensi dan loading
+// --- DEFINISI IKON LOKAL ---
 const IconWrapper = ({ children, size = 24, className = "" }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>
 );
@@ -78,15 +77,12 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app); 
 
-// App ID Handler
 const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-// Helper Referensi Koleksi
 const getCollectionRef = (name) => {
   return collection(db, 'artifacts', APP_ID, 'public', 'data', name);
 };
 
-// Helper Referensi Dokumen
 const getDocRef = (colName, docId) => {
   return doc(db, 'artifacts', APP_ID, 'public', 'data', colName, docId);
 };
@@ -125,27 +121,22 @@ const toggleFullScreen = () => {
   }
 };
 
-// --- UTILS: AUTO INJECT TAILWIND CSS (FIX TAMPILAN) ---
+// --- UTILS: AUTO INJECT TAILWIND CSS ---
 const useTailwind = () => {
   useEffect(() => {
-    // Cek apakah script Tailwind sudah ada
     if (document.getElementById('tailwind-cdn')) return;
-    
-    // Inject Script Tailwind CDN
     const script = document.createElement('script');
     script.id = 'tailwind-cdn';
     script.src = "https://cdn.tailwindcss.com";
     script.async = true;
     document.head.appendChild(script);
 
-    // Optional: Tambahkan font Inter untuk tampilan lebih mirip
     const link = document.createElement('link');
     link.href = "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap";
     link.rel = "stylesheet";
     document.head.appendChild(link);
     
     document.body.style.fontFamily = "'Inter', sans-serif";
-    // Mobile optimization
     document.body.style.touchAction = "manipulation"; 
   }, []);
 };
@@ -248,6 +239,163 @@ const useFirestoreCollection = (collectionName, firebaseUser) => {
     return unsubscribe;
   }, [collectionName, firebaseUser]);
   return { data, loading };
+};
+
+// --- KOMPONEN TERPISAH (SOLUSI BUG FOCUS INPUT) ---
+// Memindahkan QuestionEditor keluar dari AdminDashboard untuk mencegah re-render yang menghilangkan fokus
+
+const QuestionEditor = ({ qForm, setQForm, onSave, onCancel }) => {
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xl font-bold text-gray-800">{qForm.id ? 'Edit Soal' : 'Buat Soal Baru'}</h3>
+        <button onClick={onCancel}><X className="text-gray-500 hover:text-gray-700"/></button>
+      </div>
+      <div className="bg-blue-50 p-4 rounded-md mb-6 border border-blue-200 text-sm text-blue-800 flex items-center">
+        <Sigma className="w-4 h-4 mr-2"/> <span>Gunakan <code>$x^2$</code> untuk rumus inline dan <code>{'$$x=y$$'}</code> untuk blok.</span>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <input 
+              value={qForm.category} 
+              onChange={e => setQForm(prev => ({...prev, category: e.target.value}))} 
+              className="w-1/2 p-2 border rounded" 
+              placeholder="Kategori"
+            />
+            <select 
+              value={qForm.type} 
+              onChange={e => setQForm(prev => ({...prev, type: e.target.value}))} 
+              className="w-1/2 p-2 border rounded"
+            >
+              <option value="single">Pilihan Ganda</option>
+              <option value="multiple">PG Kompleks</option>
+            </select>
+          </div>
+          <input 
+            value={qForm.stimulus.title} 
+            onChange={e => setQForm(prev => ({...prev, stimulus: {...prev.stimulus, title: e.target.value}}))} 
+            className="w-full p-2 border rounded" 
+            placeholder="Judul Stimulus"
+          />
+          <input 
+            value={qForm.stimulus.image || ''} 
+            onChange={e => setQForm(prev => ({...prev, stimulus: {...prev.stimulus, image: e.target.value}}))} 
+            className="w-full p-2 border rounded text-sm" 
+            placeholder="URL Gambar (Opsional)"
+          />
+          <textarea 
+            value={qForm.stimulus.content} 
+            onChange={e => setQForm(prev => ({...prev, stimulus: {...prev.stimulus, content: e.target.value}}))} 
+            className="w-full p-2 border rounded h-32 font-mono text-sm" 
+            placeholder="Isi bacaan..."
+          />
+        </div>
+        <div className="space-y-4">
+          <textarea 
+            value={qForm.question} 
+            onChange={e => setQForm(prev => ({...prev, question: e.target.value}))} 
+            className="w-full p-2 border rounded h-24" 
+            placeholder="Pertanyaan..."
+          />
+          {qForm.options.map((opt, idx) => (
+            <div key={idx} className="flex items-center mb-2">
+              <span className="w-8 font-bold text-gray-500">{opt.id}.</span>
+              <input 
+                value={opt.text} 
+                onChange={e => {
+                  const val = e.target.value;
+                  setQForm(prev => {
+                    const newOptions = [...prev.options];
+                    newOptions[idx] = { ...newOptions[idx], text: val };
+                    return { ...prev, options: newOptions };
+                  });
+                }} 
+                className="flex-1 p-2 border rounded mr-2" 
+                placeholder={`Opsi ${opt.id}`}
+              />
+              <input 
+                type={qForm.type === 'single' ? 'radio' : 'checkbox'} 
+                checked={qForm.correctAnswer.includes(opt.id)} 
+                onChange={() => {
+                  setQForm(prev => {
+                    let nc;
+                    if (prev.type === 'single') nc = [opt.id];
+                    else nc = prev.correctAnswer.includes(opt.id) ? prev.correctAnswer.filter(c => c !== opt.id) : [...prev.correctAnswer, opt.id];
+                    return { ...prev, correctAnswer: nc };
+                  });
+                }} 
+                className="w-5 h-5 accent-green-600"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="mt-6 flex justify-end gap-3 pt-4 border-t">
+        <button onClick={onCancel} className="px-4 py-2 text-gray-600 border rounded">Batal</button>
+        <button onClick={onSave} className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center font-medium">
+          <Save className="w-4 h-4 mr-2" /> Simpan
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const MonitoringView = ({ activeExam, results, students }) => {
+    if (!activeExam) return <div className="p-10 text-center text-gray-500">Tidak ada ujian yang sedang aktif.</div>;
+    const date = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const currentResults = results.filter(r => r.examId === activeExam.id);
+
+    const handleReset = async (resultId) => {
+        if (window.confirm("Reset progres siswa ini?")) {
+          await deleteDoc(getDocRef('results', resultId));
+        }
+    };
+
+    return (
+      <div className="space-y-6 print-container">
+        <div className="print-header"><h1>LAPORAN HASIL UJIAN</h1><p>{activeExam.title}</p><p>Tanggal: {date}</p></div>
+        <div className="flex justify-between items-center no-print">
+           <div><h2 className="text-2xl font-bold">Pemantauan</h2><p className="text-gray-500">Ujian Aktif: <strong>{activeExam.title}</strong></p></div>
+           <button onClick={() => window.print()} className="flex items-center bg-gray-800 text-white px-4 py-2 rounded shadow-sm"><Printer size={16} className="mr-2"/> Cetak</button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print-container">
+           <div className="bg-white p-4 rounded-lg shadow border-l-4 border-gray-300 print-card"><div className="text-gray-500 text-sm">Total Peserta</div><div className="text-2xl font-bold">{students.length}</div></div>
+           <div className="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500 print-card"><div className="text-gray-500 text-sm">Sedang Mengerjakan</div><div className="text-2xl font-bold text-blue-600">{currentResults.filter(r => r.status === 'ongoing').length}</div></div>
+           <div className="bg-white p-4 rounded-lg shadow border-l-4 border-green-500 print-card"><div className="text-gray-500 text-sm">Selesai</div><div className="text-2xl font-bold text-green-600">{currentResults.filter(r => r.status === 'finished').length}</div></div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow overflow-hidden border print-container print-card overflow-x-auto">
+          <table className="w-full text-left text-sm min-w-[600px]">
+            <thead className="bg-gray-50 text-gray-700 font-bold border-b"><tr><th className="p-4">Nama Siswa</th><th className="p-4">Status</th><th className="p-4 w-1/3 no-print">Progres</th><th className="p-4 text-center">Nilai</th><th className="p-4 text-center no-print">Aksi</th></tr></thead>
+            <tbody className="divide-y">
+              {students.map(s => {
+                const res = currentResults.find(r => r.studentId === s.id);
+                const status = res ? res.status : 'not_started';
+                const total = activeExam.questionIds.length;
+                const answered = res ? res.answeredCount : 0;
+                const percent = total > 0 ? (answered / total) * 100 : 0;
+                
+                return (
+                  <tr key={s.id} className="hover:bg-gray-50">
+                    <td className="p-4 font-medium">{s.name} <br/><span className="text-xs text-gray-400 no-print">{s.username}</span></td>
+                    <td className="p-4">
+                      {status === 'not_started' && <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Belum Login</span>}
+                      {status === 'ongoing' && <span className="px-2 py-1 bg-blue-100 text-blue-600 rounded text-xs">Mengerjakan...</span>}
+                      {status === 'finished' && <span className="px-2 py-1 bg-green-100 text-green-600 rounded text-xs font-bold">Selesai</span>}
+                    </td>
+                    <td className="p-4 no-print"><div className="flex items-center gap-2"><div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden border border-gray-300"><div className={`h-full rounded-full transition-all duration-500 ${status === 'finished' ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${percent}%` }}></div></div><span className="text-xs font-mono">{answered}/{total}</span></div></td>
+                    <td className="p-4 text-center">{status === 'finished' ? <span className="font-bold text-lg text-gray-800">{res.score.toFixed(1)}</span> : <span className="text-gray-400">-</span>}</td>
+                    <td className="p-4 text-center no-print">{res && <button onClick={() => handleReset(res.id)} className="text-red-600 hover:bg-red-50 px-2 py-1 rounded text-xs border border-red-200">Reset</button>}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
 };
 
 // --- LOGIN SCREEN ---
@@ -565,14 +713,6 @@ const AdminDashboard = ({
     reader.readAsText(file);
   };
 
-  // Monitoring
-  const activeExam = exams.find(e => e.isActive);
-  const handleResetProgress = async (resultId) => {
-    if (window.confirm("Reset progres siswa ini?")) {
-      await deleteDoc(getDocRef('results', resultId));
-    }
-  };
-
   // SEED DATA FUNCTION
   const handleSeedData = async () => {
     if(!window.confirm("Database Anda akan diisi dengan data contoh (Soal, Siswa, Ujian). Lanjutkan?")) return;
@@ -602,96 +742,6 @@ const AdminDashboard = ({
     } catch(e) { alert("Gagal seeding: " + e.message); }
   };
 
-  // --- RENDERERS ---
-  const QuestionEditor = () => (
-    <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xl font-bold text-gray-800">{qForm.id ? 'Edit Soal' : 'Buat Soal Baru'}</h3>
-        <button onClick={() => setIsEditingQ(false)}><X className="text-gray-500 hover:text-gray-700"/></button>
-      </div>
-      <div className="bg-blue-50 p-4 rounded-md mb-6 border border-blue-200 text-sm text-blue-800 flex items-center"><Sigma className="w-4 h-4 mr-2"/> <span>Gunakan <code>$x^2$</code> untuk rumus inline dan <code>{'$$x=y$$'}</code> untuk blok.</span></div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            <input value={qForm.category} onChange={e => setQForm({...qForm, category: e.target.value})} className="w-1/2 p-2 border rounded" placeholder="Kategori"/>
-            <select value={qForm.type} onChange={e => setQForm({...qForm, type: e.target.value})} className="w-1/2 p-2 border rounded"><option value="single">Pilihan Ganda</option><option value="multiple">PG Kompleks</option></select>
-          </div>
-          <input value={qForm.stimulus.title} onChange={e => setQForm({...qForm, stimulus: {...qForm.stimulus, title: e.target.value}})} className="w-full p-2 border rounded" placeholder="Judul Stimulus"/>
-          <input value={qForm.stimulus.image || ''} onChange={e => setQForm({...qForm, stimulus: {...qForm.stimulus, image: e.target.value}})} className="w-full p-2 border rounded text-sm" placeholder="URL Gambar (Opsional)"/>
-          <textarea value={qForm.stimulus.content} onChange={e => setQForm({...qForm, stimulus: {...qForm.stimulus, content: e.target.value}})} className="w-full p-2 border rounded h-32 font-mono text-sm" placeholder="Isi bacaan..."/>
-        </div>
-        <div className="space-y-4">
-          <textarea value={qForm.question} onChange={e => setQForm({...qForm, question: e.target.value})} className="w-full p-2 border rounded h-24" placeholder="Pertanyaan..."/>
-          {qForm.options.map((opt, idx) => (
-            <div key={idx} className="flex items-center mb-2">
-              <span className="w-8 font-bold text-gray-500">{opt.id}.</span>
-              <input value={opt.text} onChange={e => {const n = [...qForm.options]; n[idx].text = e.target.value; setQForm({...qForm, options: n});}} className="flex-1 p-2 border rounded mr-2" placeholder={`Opsi ${opt.id}`}/>
-              <input type={qForm.type === 'single' ? 'radio' : 'checkbox'} checked={qForm.correctAnswer.includes(opt.id)} onChange={() => {
-                let nc; if (qForm.type === 'single') nc = [opt.id]; else nc = qForm.correctAnswer.includes(opt.id) ? qForm.correctAnswer.filter(c => c !== opt.id) : [...qForm.correctAnswer, opt.id];
-                setQForm({...qForm, correctAnswer: nc});
-              }} className="w-5 h-5 accent-green-600"/>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="mt-6 flex justify-end gap-3 pt-4 border-t">
-        <button onClick={() => setIsEditingQ(false)} className="px-4 py-2 text-gray-600 border rounded">Batal</button>
-        <button onClick={handleSaveQ} className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center font-medium"><Save className="w-4 h-4 mr-2" /> Simpan</button>
-      </div>
-    </div>
-  );
-
-  const MonitoringView = () => {
-    if (!activeExam) return <div className="p-10 text-center text-gray-500">Tidak ada ujian yang sedang aktif.</div>;
-    const date = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    const currentResults = results.filter(r => r.examId === activeExam.id);
-
-    return (
-      <div className="space-y-6 print-container">
-        <div className="print-header"><h1>LAPORAN HASIL UJIAN</h1><p>{activeExam.title}</p><p>Tanggal: {date}</p></div>
-        <div className="flex justify-between items-center no-print">
-           <div><h2 className="text-2xl font-bold">Pemantauan</h2><p className="text-gray-500">Ujian Aktif: <strong>{activeExam.title}</strong></p></div>
-           <button onClick={() => window.print()} className="flex items-center bg-gray-800 text-white px-4 py-2 rounded shadow-sm"><Printer size={16} className="mr-2"/> Cetak</button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print-container">
-           <div className="bg-white p-4 rounded-lg shadow border-l-4 border-gray-300 print-card"><div className="text-gray-500 text-sm">Total Peserta</div><div className="text-2xl font-bold">{students.length}</div></div>
-           <div className="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500 print-card"><div className="text-gray-500 text-sm">Sedang Mengerjakan</div><div className="text-2xl font-bold text-blue-600">{currentResults.filter(r => r.status === 'ongoing').length}</div></div>
-           <div className="bg-white p-4 rounded-lg shadow border-l-4 border-green-500 print-card"><div className="text-gray-500 text-sm">Selesai</div><div className="text-2xl font-bold text-green-600">{currentResults.filter(r => r.status === 'finished').length}</div></div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow overflow-hidden border print-container print-card overflow-x-auto">
-          <table className="w-full text-left text-sm min-w-[600px]">
-            <thead className="bg-gray-50 text-gray-700 font-bold border-b"><tr><th className="p-4">Nama Siswa</th><th className="p-4">Status</th><th className="p-4 w-1/3 no-print">Progres</th><th className="p-4 text-center">Nilai</th><th className="p-4 text-center no-print">Aksi</th></tr></thead>
-            <tbody className="divide-y">
-              {students.map(s => {
-                const res = currentResults.find(r => r.studentId === s.id);
-                const status = res ? res.status : 'not_started';
-                const total = activeExam.questionIds.length;
-                const answered = res ? res.answeredCount : 0;
-                const percent = total > 0 ? (answered / total) * 100 : 0;
-                
-                return (
-                  <tr key={s.id} className="hover:bg-gray-50">
-                    <td className="p-4 font-medium">{s.name} <br/><span className="text-xs text-gray-400 no-print">{s.username}</span></td>
-                    <td className="p-4">
-                      {status === 'not_started' && <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Belum Login</span>}
-                      {status === 'ongoing' && <span className="px-2 py-1 bg-blue-100 text-blue-600 rounded text-xs">Mengerjakan...</span>}
-                      {status === 'finished' && <span className="px-2 py-1 bg-green-100 text-green-600 rounded text-xs font-bold">Selesai</span>}
-                    </td>
-                    <td className="p-4 no-print"><div className="flex items-center gap-2"><div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden border border-gray-300"><div className={`h-full rounded-full transition-all duration-500 ${status === 'finished' ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${percent}%` }}></div></div><span className="text-xs font-mono">{answered}/{total}</span></div></td>
-                    <td className="p-4 text-center">{status === 'finished' ? <span className="font-bold text-lg text-gray-800">{res.score.toFixed(1)}</span> : <span className="text-gray-400">-</span>}</td>
-                    <td className="p-4 text-center no-print">{res && <button onClick={() => handleResetProgress(res.id)} className="text-red-600 hover:bg-red-50 px-2 py-1 rounded text-xs border border-red-200">Reset</button>}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
       <PrintStyles />
@@ -711,7 +761,14 @@ const AdminDashboard = ({
         </div>
       </div>
       <div className="max-w-6xl mx-auto p-6 print-container">
-        {activeTab === 'questions' && (isEditingQ ? <QuestionEditor /> : (
+        {activeTab === 'questions' && (isEditingQ ? 
+          <QuestionEditor 
+            qForm={qForm} 
+            setQForm={setQForm} 
+            onSave={handleSaveQ} 
+            onCancel={() => setIsEditingQ(false)} 
+          /> 
+          : (
             <>
               <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold">Bank Soal ({questions.length})</h2><button onClick={handleCreateQ} className="bg-blue-600 text-white px-4 py-2 rounded flex items-center"><Plus size={18} className="mr-2"/> Tambah Soal</button></div>
               <div className="grid gap-3">{questions.map((q, idx) => (<div key={q.id} className="bg-white p-5 rounded-lg border border-gray-200 hover:border-blue-300 shadow-sm transition flex justify-between items-start"><div className="flex-1 pr-6"><div className="flex items-center space-x-2 mb-2"><span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs font-bold uppercase">#{idx + 1}</span><span className="text-xs font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded">{q.type}</span></div><div className="font-semibold line-clamp-2"><FormattedText text={q.question}/></div></div><div className="flex gap-2"><button onClick={() => handleEditQ(q)} className="text-blue-600 bg-blue-50 p-2 rounded"><Edit size={16}/></button><button onClick={() => handleDeleteQ(q.id)} className="text-red-600 bg-red-50 p-2 rounded"><Trash2 size={16}/></button></div></div>))}</div>
@@ -765,7 +822,7 @@ const AdminDashboard = ({
               </div>
             </>
         ))}
-        {activeTab === 'monitoring' && <MonitoringView />}
+        {activeTab === 'monitoring' && <MonitoringView activeExam={activeExam} results={results} students={students} />}
       </div>
     </div>
   );
