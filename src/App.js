@@ -26,10 +26,8 @@ const IconWrapper = ({ children, size = 24, className = "" }) => (
 const ChevronLeft = (p) => <IconWrapper {...p}><path d="m15 18-6-6 6-6"/></IconWrapper>;
 const ChevronRight = (p) => <IconWrapper {...p}><path d="m9 18 6-6-6-6"/></IconWrapper>;
 const Clock = (p) => <IconWrapper {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></IconWrapper>;
-const Grid = (p) => <IconWrapper {...p}><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></IconWrapper>;
 const CheckCircle = (p) => <IconWrapper {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconWrapper>;
 const AlertCircle = (p) => <IconWrapper {...p}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></IconWrapper>;
-const Flag = (p) => <IconWrapper {...p}><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></IconWrapper>;
 const FileText = (p) => <IconWrapper {...p}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></IconWrapper>;
 const Menu = (p) => <IconWrapper {...p}><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></IconWrapper>;
 const X = (p) => <IconWrapper {...p}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></IconWrapper>;
@@ -41,25 +39,20 @@ const Edit = (p) => <IconWrapper {...p}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 
 const Save = (p) => <IconWrapper {...p}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></IconWrapper>;
 const LogOut = (p) => <IconWrapper {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></IconWrapper>;
 const ArrowLeft = (p) => <IconWrapper {...p}><line x1="19" x2="5" y1="12" y2="12"/><polyline points="12 19 5 12 12 5"/></IconWrapper>;
-const ImageIcon = (p) => <IconWrapper {...p}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></IconWrapper>;
 const Sigma = (p) => <IconWrapper {...p}><path d="M18 7V4H6l7 8-7 8h12v-3"/></IconWrapper>;
-const LayoutDashboard = (p) => <IconWrapper {...p}><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></IconWrapper>;
 const List = (p) => <IconWrapper {...p}><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></IconWrapper>;
 const Calendar = (p) => <IconWrapper {...p}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></IconWrapper>;
 const PlayCircle = (p) => <IconWrapper {...p}><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></IconWrapper>;
 const StopCircle = (p) => <IconWrapper {...p}><circle cx="12" cy="12" r="10"/><rect width="6" height="6" x="9" y="9"/></IconWrapper>;
-const Shuffle = (p) => <IconWrapper {...p}><line x1="16" x2="21" y1="3" y2="3"/><line x1="21" x2="21" y1="8" y2="3"/><line x1="4" x2="21" y1="20" y2="3"/><line x1="21" x2="16" y1="21" y2="21"/><line x1="21" x2="21" y1="16" y2="21"/><line x1="15" x2="21" y1="10" y2="21"/><line x1="4" x2="9" y1="4" y2="9"/></IconWrapper>;
 const User = (p) => <IconWrapper {...p}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconWrapper>;
 const Key = (p) => <IconWrapper {...p}><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></IconWrapper>;
 const Upload = (p) => <IconWrapper {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></IconWrapper>;
 const Activity = (p) => <IconWrapper {...p}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></IconWrapper>;
-const RefreshCw = (p) => <IconWrapper {...p}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></IconWrapper>;
 const Printer = (p) => <IconWrapper {...p}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></IconWrapper>;
 const Database = (p) => <IconWrapper {...p}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></IconWrapper>;
 const UserPlus = (p) => <IconWrapper {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></IconWrapper>;
-const Lock = (p) => <IconWrapper {...p}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></IconWrapper>;
 const Maximize = (p) => <IconWrapper {...p}><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></IconWrapper>;
-const Minimize = (p) => <IconWrapper {...p}><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></IconWrapper>;
+const Filter = (p) => <IconWrapper {...p}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></IconWrapper>;
 
 // --- KONFIGURASI FIREBASE ---
 const firebaseConfig = {
@@ -121,6 +114,23 @@ const toggleFullScreen = () => {
   }
 };
 
+// --- UTILS: GOOGLE DRIVE IMAGE FIXER ---
+const getOptimizedImageUrl = (url) => {
+  if (!url) return '';
+  try {
+    if (url.indexOf('drive.google.com') !== -1) {
+      let match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (!match) match = url.match(/id=([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+      }
+    }
+  } catch (e) {
+    console.error("Error parsing image URL:", e);
+  }
+  return url;
+};
+
 // --- UTILS: AUTO INJECT TAILWIND CSS ---
 const useTailwind = () => {
   useEffect(() => {
@@ -130,12 +140,10 @@ const useTailwind = () => {
     script.src = "https://cdn.tailwindcss.com";
     script.async = true;
     document.head.appendChild(script);
-
     const link = document.createElement('link');
     link.href = "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap";
     link.rel = "stylesheet";
     document.head.appendChild(link);
-    
     document.body.style.fontFamily = "'Inter', sans-serif";
     document.body.style.touchAction = "manipulation"; 
   }, []);
@@ -162,20 +170,21 @@ const useKatex = () => {
 const FormattedText = ({ text, className = "" }) => {
   const isKatexLoaded = useKatex();
   const containerRef = useRef(null);
+  const safeText = typeof text === 'string' ? text : String(text || '');
   useEffect(() => {
     if (!containerRef.current || !isKatexLoaded || !window.katex) return;
     const regex = /\$\$([\s\S]*?)\$\$|\$((?:\\.|[^$])*?)\$/g;
     let lastIndex = 0; let match; let html = '';
-    while ((match = regex.exec(text)) !== null) {
-      html += text.slice(lastIndex, match.index).replace(/\n/g, '<br/>');
+    while ((match = regex.exec(safeText)) !== null) {
+      html += safeText.slice(lastIndex, match.index).replace(/\n/g, '<br/>');
       const latex = match[1] || match[2];
       try { html += window.katex.renderToString(latex, { displayMode: !!match[1], throwOnError: false }); } catch (e) { html += latex; }
       lastIndex = regex.lastIndex;
     }
-    html += text.slice(lastIndex).replace(/\n/g, '<br/>');
+    html += safeText.slice(lastIndex).replace(/\n/g, '<br/>');
     containerRef.current.innerHTML = html;
-  }, [text, isKatexLoaded]);
-  return <div ref={containerRef} className={className}>{text}</div>;
+  }, [safeText, isKatexLoaded]);
+  return <div ref={containerRef} className={className}>{safeText}</div>;
 };
 
 // --- UTILS: SHUFFLE ---
@@ -204,6 +213,16 @@ const SEED_DATA = {
       question: "Manakah pernyataan yang BENAR? (Pilih lebih dari satu jawaban)",
       options: [{ id: 'A', text: 'Harga 2 kg Jeruk lebih murah daripada 1 kg Anggur.' }, { id: 'B', text: 'Dengan uang Rp 50.000, Ibu bisa membeli 1 kg Apel dan 1 kg Mangga.' }, { id: 'C', text: 'Harga 1 kg Apel sama dengan harga 2 kg Jeruk.' }, { id: 'D', text: 'Jika Ibu membeli 1 kg Anggur dan 2 kg Mangga, uangnya masih sisa.' }],
       correctAnswer: ['A', 'B']
+    },
+    {
+      id: "q3", type: 'true_false', category: 'Literasi Sains',
+      stimulus: { title: 'Tata Surya', image: '', content: 'Bumi adalah planet ketiga dari matahari dalam sistem tata surya kita. Bumi memiliki satu satelit alami yaitu Bulan.' },
+      question: 'Tentukan apakah pernyataan berikut Benar atau Salah!',
+      trueFalseStatements: [
+        { id: 's1', text: 'Bumi mengelilingi Matahari.', correct: true },
+        { id: 's2', text: 'Matahari adalah sebuah planet.', correct: false },
+        { id: 's3', text: 'Bulan adalah satelit alami Bumi.', correct: true }
+      ]
     }
   ],
   students: [
@@ -211,8 +230,8 @@ const SEED_DATA = {
   ],
   exams: [
     {
-      id: "e1", title: 'Simulasi ANBK Literasi & Numerasi', duration: 30,
-      questionIds: ["q1", "q2"], randomizeQuestions: false, randomizeOptions: false, isActive: true
+      id: "e1", title: 'Simulasi ANBK Lengkap', duration: 30,
+      questionIds: ["q1", "q2", "q3"], randomizeQuestions: false, randomizeOptions: false, isActive: true
     }
   ],
   admins: [
@@ -241,10 +260,28 @@ const useFirestoreCollection = (collectionName, firebaseUser) => {
   return { data, loading };
 };
 
-// --- KOMPONEN TERPISAH (SOLUSI BUG FOCUS INPUT) ---
-// Memindahkan QuestionEditor keluar dari AdminDashboard untuk mencegah re-render yang menghilangkan fokus
-
+// --- KOMPONEN QUESTION EDITOR ---
 const QuestionEditor = ({ qForm, setQForm, onSave, onCancel }) => {
+  
+  const handleAddTFStatement = () => {
+    setQForm(prev => ({
+      ...prev,
+      trueFalseStatements: [...(prev.trueFalseStatements || []), { id: Date.now().toString(), text: '', correct: true }]
+    }));
+  };
+
+  const handleUpdateTFStatement = (idx, field, value) => {
+    setQForm(prev => {
+      const newSt = [...(prev.trueFalseStatements || [])];
+      newSt[idx] = { ...newSt[idx], [field]: value };
+      return { ...prev, trueFalseStatements: newSt };
+    });
+  };
+
+  const handleDeleteTFStatement = (idx) => {
+    setQForm(prev => ({ ...prev, trueFalseStatements: prev.trueFalseStatements.filter((_, i) => i !== idx) }));
+  };
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
       <div className="flex justify-between items-center mb-6">
@@ -257,12 +294,22 @@ const QuestionEditor = ({ qForm, setQForm, onSave, onCancel }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div className="flex gap-2">
-            <input 
-              value={qForm.category} 
-              onChange={e => setQForm(prev => ({...prev, category: e.target.value}))} 
-              className="w-1/2 p-2 border rounded" 
-              placeholder="Kategori"
-            />
+            <div className="w-1/2">
+              <input 
+                list="category-list"
+                value={qForm.category} 
+                onChange={e => setQForm(prev => ({...prev, category: e.target.value}))} 
+                className="w-full p-2 border rounded" 
+                placeholder="Kategori"
+              />
+              <datalist id="category-list">
+                <option value="Literasi Membaca" />
+                <option value="Numerasi" />
+                <option value="Literasi Sains" />
+                <option value="Survei Karakter" />
+                <option value="Umum" />
+              </datalist>
+            </div>
             <select 
               value={qForm.type} 
               onChange={e => setQForm(prev => ({...prev, type: e.target.value}))} 
@@ -270,6 +317,7 @@ const QuestionEditor = ({ qForm, setQForm, onSave, onCancel }) => {
             >
               <option value="single">Pilihan Ganda</option>
               <option value="multiple">PG Kompleks</option>
+              <option value="true_false">Benar / Salah</option>
             </select>
           </div>
           <input 
@@ -298,37 +346,69 @@ const QuestionEditor = ({ qForm, setQForm, onSave, onCancel }) => {
             className="w-full p-2 border rounded h-24" 
             placeholder="Pertanyaan..."
           />
-          {qForm.options.map((opt, idx) => (
-            <div key={idx} className="flex items-center mb-2">
-              <span className="w-8 font-bold text-gray-500">{opt.id}.</span>
-              <input 
-                value={opt.text} 
-                onChange={e => {
-                  const val = e.target.value;
-                  setQForm(prev => {
-                    const newOptions = [...prev.options];
-                    newOptions[idx] = { ...newOptions[idx], text: val };
-                    return { ...prev, options: newOptions };
-                  });
-                }} 
-                className="flex-1 p-2 border rounded mr-2" 
-                placeholder={`Opsi ${opt.id}`}
-              />
-              <input 
-                type={qForm.type === 'single' ? 'radio' : 'checkbox'} 
-                checked={qForm.correctAnswer.includes(opt.id)} 
-                onChange={() => {
-                  setQForm(prev => {
-                    let nc;
-                    if (prev.type === 'single') nc = [opt.id];
-                    else nc = prev.correctAnswer.includes(opt.id) ? prev.correctAnswer.filter(c => c !== opt.id) : [...prev.correctAnswer, opt.id];
-                    return { ...prev, correctAnswer: nc };
-                  });
-                }} 
-                className="w-5 h-5 accent-green-600"
-              />
+          
+          {/* EDITOR PILIHAN GANDA / KOMPLEKS */}
+          {(qForm.type === 'single' || qForm.type === 'multiple') && (
+            <div className="bg-gray-50 p-4 rounded border">
+              <h4 className="font-bold text-sm mb-3 text-gray-500 uppercase">Opsi Jawaban</h4>
+              {qForm.options.map((opt, idx) => (
+                <div key={idx} className="flex items-center mb-2">
+                  <span className="w-8 font-bold text-gray-500">{opt.id}.</span>
+                  <input 
+                    value={opt.text} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      setQForm(prev => {
+                        const newOptions = [...prev.options];
+                        newOptions[idx] = { ...newOptions[idx], text: val };
+                        return { ...prev, options: newOptions };
+                      });
+                    }} 
+                    className="flex-1 p-2 border rounded mr-2" 
+                    placeholder={`Opsi ${opt.id}`}
+                  />
+                  <input 
+                    type={qForm.type === 'single' ? 'radio' : 'checkbox'} 
+                    checked={qForm.correctAnswer.includes(opt.id)} 
+                    onChange={() => {
+                      setQForm(prev => {
+                        let nc;
+                        if (prev.type === 'single') nc = [opt.id];
+                        else nc = prev.correctAnswer.includes(opt.id) ? prev.correctAnswer.filter(c => c !== opt.id) : [...prev.correctAnswer, opt.id];
+                        return { ...prev, correctAnswer: nc };
+                      });
+                    }} 
+                    className="w-5 h-5 accent-green-600 cursor-pointer"
+                  />
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+
+          {/* EDITOR BENAR / SALAH */}
+          {qForm.type === 'true_false' && (
+            <div className="bg-gray-50 p-4 rounded border">
+              <h4 className="font-bold text-sm mb-3 text-gray-500 uppercase">Pernyataan Benar / Salah</h4>
+              <div className="space-y-2">
+                 {(qForm.trueFalseStatements || []).map((st, idx) => (
+                  <div key={idx} className="flex gap-2 items-center bg-white p-2 border rounded">
+                     <textarea 
+                        className="flex-1 p-1 text-sm border-none outline-none resize-none h-10" 
+                        placeholder="Pernyataan..." 
+                        value={st.text} 
+                        onChange={e => handleUpdateTFStatement(idx, 'text', e.target.value)}
+                     />
+                     <div className="flex items-center gap-1 bg-gray-100 p-1 rounded">
+                        <button onClick={() => handleUpdateTFStatement(idx, 'correct', true)} className={`px-2 py-1 text-xs rounded font-bold ${st.correct ? 'bg-green-500 text-white' : 'text-gray-500'}`}>Benar</button>
+                        <button onClick={() => handleUpdateTFStatement(idx, 'correct', false)} className={`px-2 py-1 text-xs rounded font-bold ${!st.correct ? 'bg-red-500 text-white' : 'text-gray-500'}`}>Salah</button>
+                     </div>
+                     <button onClick={() => handleDeleteTFStatement(idx)} className="text-red-500 hover:bg-red-50 p-1 rounded"><X size={16}/></button>
+                  </div>
+                 ))}
+                 <button onClick={handleAddTFStatement} className="mt-2 text-sm text-blue-600 font-bold flex items-center hover:underline"><Plus size={14} className="mr-1"/> Tambah Pernyataan</button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       <div className="mt-6 flex justify-end gap-3 pt-4 border-t">
@@ -610,15 +690,23 @@ const AdminDashboard = ({
   onLogout 
 }) => {
   const [activeTab, setActiveTab] = useState('questions'); 
+  const [categoryFilter, setCategoryFilter] = useState('Semua'); // NEW: Filter State
   const [examView, setExamView] = useState('list');
   const fileInputRef = useRef(null);
   
+  // FIX: Definisi activeExam yang hilang sebelumnya
+  const activeExam = exams.find(e => e.isActive);
+
   // Forms State
   const [isEditingQ, setIsEditingQ] = useState(false);
   const [qForm, setQForm] = useState(null);
   const [examForm, setExamForm] = useState({ title: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false });
   const [isEditingStudent, setIsEditingStudent] = useState(false);
   const [studentForm, setStudentForm] = useState({ name: '', username: '', password: '' });
+
+  // Filter Logic
+  const filteredQuestions = categoryFilter === 'Semua' ? questions : questions.filter(q => q.category === categoryFilter);
+  const uniqueCategories = ['Semua', ...new Set(questions.map(q => q.category).filter(Boolean))];
 
   // --- ACTIONS (FIRESTORE) ---
 
@@ -628,8 +716,10 @@ const AdminDashboard = ({
     setQForm({ 
       type: 'single', category: 'Umum', 
       stimulus: {title:'',content:'',image:''}, 
-      question:'', options:[{id:'A',text:''},{id:'B',text:''},{id:'C',text:''},{id:'D',text:''}], 
-      correctAnswer:[]
+      question:'', 
+      options:[{id:'A',text:''},{id:'B',text:''},{id:'C',text:''},{id:'D',text:''}], 
+      correctAnswer:[],
+      trueFalseStatements: [{id: 's1', text: '', correct: true}] // Init untuk B/S
     }); 
     setIsEditingQ(true); 
   };
@@ -770,8 +860,37 @@ const AdminDashboard = ({
           /> 
           : (
             <>
-              <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold">Bank Soal ({questions.length})</h2><button onClick={handleCreateQ} className="bg-blue-600 text-white px-4 py-2 rounded flex items-center"><Plus size={18} className="mr-2"/> Tambah Soal</button></div>
-              <div className="grid gap-3">{questions.map((q, idx) => (<div key={q.id} className="bg-white p-5 rounded-lg border border-gray-200 hover:border-blue-300 shadow-sm transition flex justify-between items-start"><div className="flex-1 pr-6"><div className="flex items-center space-x-2 mb-2"><span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs font-bold uppercase">#{idx + 1}</span><span className="text-xs font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded">{q.type}</span></div><div className="font-semibold line-clamp-2"><FormattedText text={q.question}/></div></div><div className="flex gap-2"><button onClick={() => handleEditQ(q)} className="text-blue-600 bg-blue-50 p-2 rounded"><Edit size={16}/></button><button onClick={() => handleDeleteQ(q.id)} className="text-red-600 bg-red-50 p-2 rounded"><Trash2 size={16}/></button></div></div>))}</div>
+              <div className="flex justify-between items-center mb-6">
+                 <div>
+                   <h2 className="text-2xl font-bold">Bank Soal ({questions.length})</h2>
+                   <div className="flex items-center mt-2 text-sm text-gray-500 gap-2">
+                      <Filter size={14}/> 
+                      <span>Filter Kategori:</span>
+                      <select className="border rounded p-1" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+                        {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                   </div>
+                 </div>
+                 <button onClick={handleCreateQ} className="bg-blue-600 text-white px-4 py-2 rounded flex items-center"><Plus size={18} className="mr-2"/> Tambah Soal</button>
+              </div>
+              <div className="grid gap-3">{filteredQuestions.map((q, idx) => (
+                   <div key={q.id} className="bg-white p-5 rounded-lg border border-gray-200 hover:border-blue-300 shadow-sm transition flex justify-between items-start">
+                     <div className="flex-1 pr-6">
+                       <div className="flex items-center space-x-2 mb-2">
+                         <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs font-bold uppercase">#{idx + 1}</span>
+                         <span className="text-xs font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded uppercase">{q.type.replace('_', ' ')}</span>
+                         <span className="text-xs text-gray-400 border px-2 py-0.5 rounded">{q.category}</span>
+                       </div>
+                       <div className="font-semibold line-clamp-2"><FormattedText text={q.question}/></div>
+                     </div>
+                     <div className="flex gap-2">
+                       <button onClick={() => handleEditQ(q)} className="text-blue-600 bg-blue-50 p-2 rounded"><Edit size={16}/></button>
+                       <button onClick={() => handleDeleteQ(q.id)} className="text-red-600 bg-red-50 p-2 rounded"><Trash2 size={16}/></button>
+                     </div>
+                   </div>
+                 ))}
+                 {filteredQuestions.length === 0 && <div className="text-center py-10 text-gray-400">Tidak ada soal di kategori ini.</div>}
+              </div>
             </>
         ))}
         {activeTab === 'exams' && (examView === 'form' ? (
@@ -786,8 +905,18 @@ const AdminDashboard = ({
                    </div>
                 </div>
                 <div className="border-t pt-4">
-                   <p className="font-bold mb-2">Pilih Soal:</p>
-                   <div className="max-h-60 overflow-y-auto border rounded">{questions.map((q,i)=>(<div key={q.id} onClick={()=>toggleQuestionSelection(q.id)} className={`p-2 flex items-center cursor-pointer hover:bg-gray-50 ${examForm.questionIds.includes(q.id)?'bg-blue-50':''}`}><input type="checkbox" checked={examForm.questionIds.includes(q.id)} readOnly className="mr-3"/> <span className="text-sm truncate">{i+1}. {q.question}</span></div>))}</div>
+                   <div className="flex justify-between mb-2"><p className="font-bold">Pilih Soal:</p><span className="text-xs text-gray-400">{examForm.questionIds.length} terpilih</span></div>
+                   <div className="max-h-60 overflow-y-auto border rounded divide-y">
+                     {questions.map((q,i)=>(
+                       <div key={q.id} onClick={()=>toggleQuestionSelection(q.id)} className={`p-2 flex items-center cursor-pointer hover:bg-gray-50 ${examForm.questionIds.includes(q.id)?'bg-blue-50':''}`}>
+                         <input type="checkbox" checked={examForm.questionIds.includes(q.id)} readOnly className="mr-3"/> 
+                         <div className="overflow-hidden">
+                           <span className="text-xs font-bold text-gray-500 mr-2">[{q.category}]</span>
+                           <span className="text-sm truncate">{q.question}</span>
+                         </div>
+                       </div>
+                     ))}
+                   </div>
                 </div>
                 <div className="mt-4 flex justify-end gap-2"><button onClick={()=>setExamView('list')} className="px-4 py-2 border rounded">Batal</button><button onClick={handleSaveExam} className="px-4 py-2 bg-blue-600 text-white rounded">Simpan</button></div>
              </div>
@@ -823,138 +952,6 @@ const AdminDashboard = ({
             </>
         ))}
         {activeTab === 'monitoring' && <MonitoringView activeExam={activeExam} results={results} students={students} />}
-      </div>
-    </div>
-  );
-};
-
-// --- SISWA ---
-const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
-  const [processedQuestions, setProcessedQuestions] = useState([]);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState({});
-  const [raguRagu, setRaguRagu] = useState({});
-  const [timeLeft, setTimeLeft] = useState(0); 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [examFinished, setExamFinished] = useState(false);
-  const [score, setScore] = useState(0);
-  
-  const resultDocId = `${activeExam?.id}_${currentUser.id}`;
-
-  useEffect(() => {
-    if (activeExam) {
-      let qList = questions.filter(q => activeExam.questionIds.includes(q.id));
-      if (activeExam.randomizeQuestions) qList = shuffleArray(qList);
-      if (activeExam.randomizeOptions) qList = qList.map(q => ({...q, options: shuffleArray([...q.options])}));
-      setProcessedQuestions(qList); 
-      setTimeLeft(activeExam.duration * 60);
-      
-      const resultData = {
-        examId: activeExam.id,
-        studentId: currentUser.id,
-        studentName: currentUser.name,
-        status: 'ongoing',
-        answeredCount: 0,
-        score: 0,
-        timestamp: new Date().toISOString()
-      };
-      
-      try {
-        setDoc(getDocRef('results', resultDocId), resultData, { merge: true });
-      } catch (e) { console.error("Error init exam:", e); }
-    }
-  }, [activeExam?.id, questions, currentUser.id]);
-
-  useEffect(() => {
-    if (timeLeft > 0 && !examFinished) {
-      const timerId = setInterval(() => setTimeLeft(p => p - 1), 1000);
-      return () => clearInterval(timerId);
-    } else if (timeLeft === 0 && !examFinished && activeExam && processedQuestions.length > 0) {
-      finishExam();
-    }
-  }, [timeLeft, examFinished, activeExam, processedQuestions.length]);
-
-  const finishExam = async () => {
-    let correctCount = 0;
-    processedQuestions.forEach(q => {
-      const userAns = answers[q.id] || [];
-      const originalQuestion = questions.find(oq => oq.id === q.id); 
-      if (originalQuestion) {
-        const sortedUser = [...userAns].sort();
-        const sortedCorrect = [...originalQuestion.correctAnswer].sort();
-        if (JSON.stringify(sortedUser) === JSON.stringify(sortedCorrect)) correctCount++;
-      }
-    });
-    const finalScore = (correctCount / processedQuestions.length) * 100;
-    setScore(finalScore);
-    setExamFinished(true);
-    
-    // Keluar Fullscreen saat selesai
-    if (document.fullscreenElement && document.exitFullscreen) {
-        document.exitFullscreen().catch(err => console.log(err));
-    }
-    
-    try {
-        await setDoc(getDocRef('results', resultDocId), {
-            status: 'finished',
-            score: finalScore,
-            answeredCount: Object.keys(answers).length
-        }, { merge: true });
-    } catch(e) { console.error(e); }
-  };
-
-  const handleAnswer = async (oid) => {
-    if(examFinished) return;
-    const currentQ = processedQuestions[currentQuestionIndex];
-    const curr = answers[currentQ.id] || [];
-    let next;
-    if(currentQ.type === 'single') next = [oid];
-    else next = curr.includes(oid) ? curr.filter(id=>id!==oid) : [...curr, oid];
-    
-    const newAnswers = {...answers, [currentQ.id]: next};
-    setAnswers(newAnswers);
-
-    try {
-        setDoc(getDocRef('results', resultDocId), {
-            answeredCount: Object.keys(newAnswers).length
-        }, { merge: true });
-    } catch(e) { console.error(e); }
-  };
-
-  if (!activeExam) return (<div className="h-screen flex flex-col items-center justify-center bg-gray-50"><div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md"><div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"><StopCircle size={32} /></div><h2 className="text-xl font-bold text-gray-800">Tidak Ada Ujian Aktif</h2><p className="text-gray-500 mb-6">Halo, {currentUser.name}. Saat ini belum ada ujian yang aktif.</p><button onClick={onLogout} className="px-6 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg transition">Keluar</button></div></div>);
-  if (processedQuestions.length === 0) return <div className="h-screen flex items-center justify-center">Loading ujian...</div>;
-
-  if (examFinished) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white max-w-lg w-full rounded-xl shadow-lg p-8 text-center">
-          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4"/>
-          <h2 className="text-2xl font-bold mb-2">Ujian Selesai!</h2>
-          <p className="text-gray-500 mb-4">Terima kasih, {currentUser.name}.</p>
-          <div className="bg-blue-50 p-6 rounded mb-6"><span className="text-sm font-bold text-blue-600 uppercase">Nilai Akhir</span><div className="text-5xl font-bold text-blue-800 mt-2">{score.toFixed(1)}</div></div>
-          <button onClick={onLogout} className="w-full bg-gray-800 hover:bg-gray-900 text-white py-3 rounded font-bold transition">Keluar Aplikasi</button>
-        </div>
-      </div>
-    );
-  }
-
-  const currentQuestion = processedQuestions[currentQuestionIndex];
-
-  return (
-    // Gunakan h-[100dvh] untuk mobile browser (address bar issue)
-    <div className="flex flex-col h-screen h-[100dvh] bg-gray-100 font-sans text-gray-800 overflow-hidden">
-      <header className="bg-[#2d3748] text-white h-16 flex items-center justify-between px-4 shadow z-20 shrink-0">
-        <div className="flex items-center space-x-4"><div className="bg-blue-600 w-10 h-10 rounded flex items-center justify-center font-bold text-xl">A</div><div><h1 className="font-semibold text-lg">{activeExam.title}</h1><p className="text-xs text-gray-400">Peserta: {currentUser.name}</p></div></div>
-        <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center bg-gray-700 px-3 py-1.5 rounded-full border border-gray-600 font-mono"><Clock className="w-4 h-4 mr-2 text-yellow-400" />{Math.floor(timeLeft/60).toString().padStart(2,'0')}:{(timeLeft%60).toString().padStart(2,'0')}</div>
-            {/* Tombol Menu Mobile */}
-            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-2 rounded hover:bg-gray-700"><Menu/></button>
-        </div>
-      </header>
-      
-      {/* Timer Floating untuk Mobile */}
-      <div className="md:hidden bg-yellow-100 text-yellow-800 text-center text-xs font-bold py-1 border-b border-yellow-200">
-        Sisa Waktu: {Math.floor(timeLeft/60).toString().padStart(2,'0')}:{(timeLeft%60).toString().padStart(2,'0')}
       </div>
 
       <div className="flex flex-1 overflow-hidden relative">
@@ -1010,6 +1007,308 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
                     if(active) cls="border-blue-600 bg-blue-50 ring-2 ring-blue-100 text-blue-700 font-bold"; 
                     else if(ragu) cls="bg-yellow-100 border-yellow-400 text-yellow-700"; 
                     else if(ans) cls="bg-gray-800 border-gray-800 text-white"; 
+                    return <button key={q.id} onClick={()=>{setCurrentQuestionIndex(idx); setIsSidebarOpen(false)}} className={`h-10 rounded text-sm relative ${cls}`}>{idx+1}{ragu&&<span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-yellow-400 rounded-full border border-white"/>}</button>
+                })}
+            </div>
+            <div className="p-4 border-t bg-gray-50">
+                <button onClick={finishExam} className="w-full py-2.5 bg-red-600 text-white rounded font-bold">Selesai Ujian</button>
+            </div>
+        </div>
+      </div>
+      <footer className="bg-white border-t h-16 flex items-center justify-between px-4 z-20 shrink-0">
+          <button onClick={()=>setCurrentQuestionIndex(p=>p-1)} disabled={currentQuestionIndex===0} className="flex items-center px-4 py-2 border rounded disabled:opacity-50 text-sm">
+              <ChevronLeft className="mr-1 w-4 h-4"/> <span className="hidden md:inline">Sebelumnya</span>
+          </button>
+          
+          <label className="flex items-center cursor-pointer select-none">
+              <input type="checkbox" className="sr-only" checked={raguRagu[currentQuestion.id]||false} onChange={()=>setRaguRagu({...raguRagu,[currentQuestion.id]:!raguRagu[currentQuestion.id]})}/>
+              <div className={`w-10 h-6 rounded-full transition ${raguRagu[currentQuestion.id]?'bg-yellow-400':'bg-gray-300'}`}/>
+              <span className="ml-2 font-medium text-sm">Ragu-ragu</span>
+          </label>
+          
+          {currentQuestionIndex<processedQuestions.length-1 ? 
+              <button onClick={()=>setCurrentQuestionIndex(p=>p+1)} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded text-sm">
+                  <span className="hidden md:inline">Selanjutnya</span> <ChevronRight className="ml-1 w-4 h-4"/>
+              </button> : 
+              <button onClick={finishExam} className="flex items-center px-4 py-2 bg-green-600 text-white rounded text-sm">
+                  Selesai <CheckCircle className="ml-1 w-4 h-4"/>
+              </button>
+          }
+      </footer>
+    </div>
+  );
+};
+
+// --- SISWA ---
+const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
+  const [processedQuestions, setProcessedQuestions] = useState([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [raguRagu, setRaguRagu] = useState({});
+  const [timeLeft, setTimeLeft] = useState(0); 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [examFinished, setExamFinished] = useState(false);
+  const [score, setScore] = useState(0);
+  
+  const resultDocId = `${activeExam?.id}_${currentUser.id}`;
+
+  useEffect(() => {
+    if (activeExam) {
+      let qList = questions.filter(q => activeExam.questionIds.includes(q.id));
+      if (activeExam.randomizeQuestions) qList = shuffleArray(qList);
+      
+      // Randomize options ONLY for Single/Multiple choice
+      if (activeExam.randomizeOptions) {
+        qList = qList.map(q => {
+          if (q.type === 'single' || q.type === 'multiple') {
+            return {...q, options: shuffleArray([...q.options])};
+          }
+          return q;
+        });
+      }
+      setProcessedQuestions(qList); 
+      setTimeLeft(activeExam.duration * 60);
+      
+      const resultData = {
+        examId: activeExam.id,
+        studentId: currentUser.id,
+        studentName: currentUser.name,
+        status: 'ongoing',
+        answeredCount: 0,
+        score: 0,
+        timestamp: new Date().toISOString()
+      };
+      
+      try {
+        setDoc(getDocRef('results', resultDocId), resultData, { merge: true });
+      } catch (e) { console.error("Error init exam:", e); }
+    }
+  }, [activeExam?.id, questions, currentUser.id]);
+
+  useEffect(() => {
+    if (timeLeft > 0 && !examFinished) {
+      const timerId = setInterval(() => setTimeLeft(p => p - 1), 1000);
+      return () => clearInterval(timerId);
+    } else if (timeLeft === 0 && !examFinished && activeExam && processedQuestions.length > 0) {
+      finishExam();
+    }
+  }, [timeLeft, examFinished, activeExam, processedQuestions.length]);
+
+  const finishExam = async () => {
+    let totalScore = 0;
+    
+    processedQuestions.forEach(q => {
+      const userAns = answers[q.id];
+      const originalQuestion = questions.find(oq => oq.id === q.id); 
+      if (!originalQuestion) return;
+
+      // Logika Penilaian
+      if (q.type === 'single') {
+         if (userAns && userAns.length > 0 && originalQuestion.correctAnswer.includes(userAns[0])) {
+           totalScore += 1;
+         }
+      } 
+      else if (q.type === 'multiple') {
+         // Strict Scoring: Harus sama persis
+         const u = (userAns || []).sort();
+         const c = [...originalQuestion.correctAnswer].sort();
+         if (JSON.stringify(u) === JSON.stringify(c)) totalScore += 1;
+      }
+      else if (q.type === 'true_false') {
+         // Partial Scoring: Poin per pernyataan benar
+         // Jika ada 3 pernyataan, maka tiap baris bernilai 1/3 poin
+         const statements = originalQuestion.trueFalseStatements || [];
+         let correctCount = 0;
+         statements.forEach(st => {
+            // userAns is object like { s1: true, s2: false }
+            if (userAns && userAns[st.id] === st.correct) {
+               correctCount++;
+            }
+         });
+         if (statements.length > 0) {
+            totalScore += (correctCount / statements.length);
+         }
+      }
+    });
+
+    const finalScore = (totalScore / processedQuestions.length) * 100;
+    setScore(finalScore);
+    setExamFinished(true);
+    
+    if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(err => console.log(err));
+    }
+    
+    try {
+        await setDoc(getDocRef('results', resultDocId), {
+            status: 'finished',
+            score: finalScore,
+            answeredCount: Object.keys(answers).length
+        }, { merge: true });
+    } catch(e) { console.error(e); }
+  };
+
+  const handleAnswer = async (value, type, subId = null) => {
+    if(examFinished) return;
+    const currentQ = processedQuestions[currentQuestionIndex];
+    const curr = answers[currentQ.id];
+    let next;
+
+    if (type === 'single') {
+        next = [value];
+    } else if (type === 'multiple') {
+        const c = curr || [];
+        next = c.includes(value) ? c.filter(id=>id!==value) : [...c, value];
+    } else if (type === 'true_false') {
+        // value is boolean (true/false), subId is statement ID
+        next = { ...(curr || {}), [subId]: value };
+    }
+    
+    const newAnswers = {...answers, [currentQ.id]: next};
+    setAnswers(newAnswers);
+
+    try {
+        setDoc(getDocRef('results', resultDocId), {
+            answeredCount: Object.keys(newAnswers).length
+        }, { merge: true });
+    } catch(e) { console.error(e); }
+  };
+
+  if (!activeExam) return (<div className="h-screen flex flex-col items-center justify-center bg-gray-50"><div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md"><div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"><StopCircle size={32} /></div><h2 className="text-xl font-bold text-gray-800">Tidak Ada Ujian Aktif</h2><p className="text-gray-500 mb-6">Halo, {currentUser.name}. Saat ini belum ada ujian yang aktif.</p><button onClick={onLogout} className="px-6 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg transition">Keluar</button></div></div>);
+  if (processedQuestions.length === 0) return <div className="h-screen flex items-center justify-center">Loading ujian...</div>;
+
+  if (examFinished) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white max-w-lg w-full rounded-xl shadow-lg p-8 text-center">
+          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4"/>
+          <h2 className="text-2xl font-bold mb-2">Ujian Selesai!</h2>
+          <p className="text-gray-500 mb-4">Terima kasih, {currentUser.name}.</p>
+          <div className="bg-blue-50 p-6 rounded mb-6"><span className="text-sm font-bold text-blue-600 uppercase">Nilai Akhir</span><div className="text-5xl font-bold text-blue-800 mt-2">{score.toFixed(1)}</div></div>
+          <button onClick={onLogout} className="w-full bg-gray-800 hover:bg-gray-900 text-white py-3 rounded font-bold transition">Keluar Aplikasi</button>
+        </div>
+      </div>
+    );
+  }
+
+  const currentQuestion = processedQuestions[currentQuestionIndex];
+  const currentAns = answers[currentQuestion.id];
+
+  return (
+    // Gunakan h-[100dvh] untuk mobile browser (address bar issue)
+    <div className="flex flex-col h-screen h-[100dvh] bg-gray-100 font-sans text-gray-800 overflow-hidden">
+      <header className="bg-[#2d3748] text-white h-16 flex items-center justify-between px-4 shadow z-20 shrink-0">
+        <div className="flex items-center space-x-4"><div className="bg-blue-600 w-10 h-10 rounded flex items-center justify-center font-bold text-xl">A</div><div><h1 className="font-semibold text-lg">{activeExam.title}</h1><p className="text-xs text-gray-400">Peserta: {currentUser.name}</p></div></div>
+        <div className="flex items-center gap-4">
+            <div className="hidden md:flex items-center bg-gray-700 px-3 py-1.5 rounded-full border border-gray-600 font-mono"><Clock className="w-4 h-4 mr-2 text-yellow-400" />{Math.floor(timeLeft/60).toString().padStart(2,'0')}:{(timeLeft%60).toString().padStart(2,'0')}</div>
+            {/* Tombol Menu Mobile */}
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-2 rounded hover:bg-gray-700"><Menu/></button>
+        </div>
+      </header>
+      
+      {/* Timer Floating untuk Mobile */}
+      <div className="md:hidden bg-yellow-100 text-yellow-800 text-center text-xs font-bold py-1 border-b border-yellow-200">
+        Sisa Waktu: {Math.floor(timeLeft/60).toString().padStart(2,'0')}:{(timeLeft%60).toString().padStart(2,'0')}
+      </div>
+
+      <div className="flex flex-1 overflow-hidden relative">
+        <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
+          {/* Stimulus Section (Kiri/Atas) */}
+          <div className="md:w-1/2 w-full h-1/2 md:h-full overflow-y-auto border-r bg-white p-6">
+              <div className="max-w-3xl mx-auto">
+                  <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full mb-4 inline-block">{currentQuestion.category}</span>
+                  <h2 className="text-xl font-bold mb-4">{currentQuestion.stimulus.title}</h2>
+                  {currentQuestion.stimulus.image && (<div className="mb-4 rounded-lg overflow-hidden border"><img src={getOptimizedImageUrl(currentQuestion.stimulus.image)} className="w-full h-auto" alt="Stimulus"/></div>)}
+                  <div className="prose prose-blue text-gray-700 leading-relaxed text-lg"><FormattedText text={currentQuestion.stimulus.content}/></div>
+              </div>
+          </div>
+
+          {/* Soal Section (Kanan/Bawah) */}
+          <div className="md:w-1/2 w-full h-1/2 md:h-full overflow-y-auto bg-[#f7fafc] p-6">
+              <div className="max-w-2xl mx-auto pb-20">
+                  <div className="flex justify-between items-start mb-4">
+                      <span className="text-sm font-medium text-gray-500">Soal No. {currentQuestionIndex + 1}</span>
+                      <span className="text-xs px-2 py-1 rounded bg-gray-200 uppercase">{currentQuestion.type.replace('_', ' ')}</span>
+                  </div>
+                  <div className="text-lg font-medium mb-6"><FormattedText text={currentQuestion.question}/></div>
+                  <div className="space-y-3">
+                      
+                      {/* RENDER PILIHAN GANDA / KOMPLEKS */}
+                      {(currentQuestion.type === 'single' || currentQuestion.type === 'multiple') && currentQuestion.options.map(opt => {
+                          const sel = (currentAns || []).includes(opt.id); 
+                          return (
+                              <div key={opt.id} onClick={()=>handleAnswer(opt.id, currentQuestion.type)} className={`flex p-4 rounded border-2 cursor-pointer ${sel?'border-blue-500 bg-blue-50':'border-gray-200 bg-white'}`}>
+                                  <div className={`w-6 h-6 flex items-center justify-center border-2 mr-4 ${currentQuestion.type==='multiple'?'rounded':'rounded-full'} ${sel?'bg-blue-500 border-blue-500 text-white':'border-gray-300'}`}>
+                                      {sel && (currentQuestion.type==='multiple'?<CheckCircle size={14}/>:<div className="w-2.5 h-2.5 bg-white rounded-full"/>)}
+                                      {!sel && <span className="text-xs font-bold text-gray-400">{activeExam.randomizeOptions ? '-' : opt.id}</span>}
+                                  </div>
+                                  <span className="flex-1 text-sm md:text-base"><FormattedText text={opt.text}/></span>
+                              </div>
+                          )
+                      })}
+
+                      {/* RENDER BENAR / SALAH */}
+                      {currentQuestion.type === 'true_false' && (
+                        <div className="overflow-x-auto bg-white rounded shadow border">
+                           <table className="w-full text-sm text-left">
+                             <thead className="bg-gray-100 font-bold text-gray-600"><tr><th className="p-3">Pernyataan</th><th className="p-3 w-20 text-center">Benar</th><th className="p-3 w-20 text-center">Salah</th></tr></thead>
+                             <tbody className="divide-y">
+                               {(currentQuestion.trueFalseStatements || []).map(st => (
+                                 <tr key={st.id}>
+                                   <td className="p-3"><FormattedText text={st.text}/></td>
+                                   <td className="p-3 text-center">
+                                     <input 
+                                       type="radio" 
+                                       name={`tf-${st.id}`} 
+                                       checked={(currentAns || {})[st.id] === true} 
+                                       onChange={() => handleAnswer(true, 'true_false', st.id)} 
+                                       className="w-5 h-5 accent-blue-600 cursor-pointer"
+                                     />
+                                   </td>
+                                   <td className="p-3 text-center">
+                                     <input 
+                                       type="radio" 
+                                       name={`tf-${st.id}`} 
+                                       checked={(currentAns || {})[st.id] === false} 
+                                       onChange={() => handleAnswer(false, 'true_false', st.id)} 
+                                       className="w-5 h-5 accent-blue-600 cursor-pointer"
+                                     />
+                                   </td>
+                                 </tr>
+                               ))}
+                             </tbody>
+                           </table>
+                        </div>
+                      )}
+
+                  </div>
+              </div>
+          </div>
+        </main>
+
+        {/* Sidebar Navigasi Soal */}
+        <div className={`fixed inset-y-0 right-0 z-30 w-72 bg-white shadow-2xl transform transition-transform border-l flex flex-col ${isSidebarOpen || window.innerWidth >= 768 ? 'translate-x-0' : 'translate-x-full md:translate-x-0'} md:relative md:w-80 md:shadow-none`}>
+            <div className="p-4 border-b flex justify-between bg-gray-50 font-bold text-gray-700">
+                <span>Daftar Soal</span>
+                <button onClick={()=>setIsSidebarOpen(false)} className="md:hidden"><X/></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 grid grid-cols-5 gap-2 content-start">
+                {processedQuestions.map((q, idx) => {
+                    // Logic Cek Jawaban:
+                    let hasAns = false;
+                    const ansData = answers[q.id];
+                    if (q.type === 'single' || q.type === 'multiple') {
+                        hasAns = ansData && ansData.length > 0;
+                    } else if (q.type === 'true_false') {
+                        hasAns = ansData && Object.keys(ansData).length > 0;
+                    }
+
+                    const active = currentQuestionIndex === idx; 
+                    const ragu = raguRagu[q.id]; 
+                    let cls = "border bg-white"; 
+                    if(active) cls="border-blue-600 bg-blue-50 ring-2 ring-blue-100 text-blue-700 font-bold"; 
+                    else if(ragu) cls="bg-yellow-100 border-yellow-400 text-yellow-700"; 
+                    else if(hasAns) cls="bg-gray-800 border-gray-800 text-white"; 
                     return <button key={q.id} onClick={()=>{setCurrentQuestionIndex(idx); setIsSidebarOpen(false)}} className={`h-10 rounded text-sm relative ${cls}`}>{idx+1}{ragu&&<span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-yellow-400 rounded-full border border-white"/>}</button>
                 })}
             </div>
