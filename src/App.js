@@ -953,6 +953,88 @@ const AdminDashboard = ({
         ))}
         {activeTab === 'monitoring' && <MonitoringView activeExam={activeExam} results={results} students={students} />}
       </div>
+
+      <div className="flex flex-1 overflow-hidden relative">
+        <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
+          {/* Stimulus Section (Kiri/Atas) */}
+          <div className="md:w-1/2 w-full h-1/2 md:h-full overflow-y-auto border-r bg-white p-6">
+              <div className="max-w-3xl mx-auto">
+                  <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full mb-4 inline-block">{currentQuestion.category}</span>
+                  <h2 className="text-xl font-bold mb-4">{currentQuestion.stimulus.title}</h2>
+                  {currentQuestion.stimulus.image && (<div className="mb-4 rounded-lg overflow-hidden border"><img src={currentQuestion.stimulus.image} className="w-full h-auto" alt="Stimulus"/></div>)}
+                  <div className="prose prose-blue text-gray-700 leading-relaxed text-lg"><FormattedText text={currentQuestion.stimulus.content}/></div>
+              </div>
+          </div>
+
+          {/* Soal Section (Kanan/Bawah) */}
+          <div className="md:w-1/2 w-full h-1/2 md:h-full overflow-y-auto bg-[#f7fafc] p-6">
+              <div className="max-w-2xl mx-auto pb-20">
+                  <div className="flex justify-between items-start mb-4">
+                      <span className="text-sm font-medium text-gray-500">Soal No. {currentQuestionIndex + 1}</span>
+                      <span className="text-xs px-2 py-1 rounded bg-gray-200">{currentQuestion.type==='multiple'?'Pilihan Ganda Kompleks':'Pilihan Ganda'}</span>
+                  </div>
+                  <div className="text-lg font-medium mb-6"><FormattedText text={currentQuestion.question}/></div>
+                  <div className="space-y-3">
+                      {currentQuestion.options.map(opt => {
+                          const sel = (answers[currentQuestion.id]||[]).includes(opt.id); 
+                          return (
+                              <div key={opt.id} onClick={()=>handleAnswer(opt.id)} className={`flex p-4 rounded border-2 cursor-pointer ${sel?'border-blue-500 bg-blue-50':'border-gray-200 bg-white'}`}>
+                                  <div className={`w-6 h-6 flex items-center justify-center border-2 mr-4 ${currentQuestion.type==='multiple'?'rounded':'rounded-full'} ${sel?'bg-blue-500 border-blue-500 text-white':'border-gray-300'}`}>
+                                      {sel && (currentQuestion.type==='multiple'?<CheckCircle size={14}/>:<div className="w-2.5 h-2.5 bg-white rounded-full"/>)}
+                                      {!sel && <span className="text-xs font-bold text-gray-400">{activeExam.randomizeOptions ? '-' : opt.id}</span>}
+                                  </div>
+                                  <span className="flex-1 text-sm md:text-base"><FormattedText text={opt.text}/></span>
+                              </div>
+                          )
+                      })}
+                  </div>
+              </div>
+          </div>
+        </main>
+
+        {/* Sidebar Navigasi Soal */}
+        <div className={`fixed inset-y-0 right-0 z-30 w-72 bg-white shadow-2xl transform transition-transform border-l flex flex-col ${isSidebarOpen || window.innerWidth >= 768 ? 'translate-x-0' : 'translate-x-full md:translate-x-0'} md:relative md:w-80 md:shadow-none`}>
+            <div className="p-4 border-b flex justify-between bg-gray-50 font-bold text-gray-700">
+                <span>Daftar Soal</span>
+                <button onClick={()=>setIsSidebarOpen(false)} className="md:hidden"><X/></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 grid grid-cols-5 gap-2 content-start">
+                {processedQuestions.map((q, idx) => {
+                    const ans = answers[q.id]?.length > 0; 
+                    const active = currentQuestionIndex === idx; 
+                    const ragu = raguRagu[q.id]; 
+                    let cls = "border bg-white"; 
+                    if(active) cls="border-blue-600 bg-blue-50 ring-2 ring-blue-100 text-blue-700 font-bold"; 
+                    else if(ragu) cls="bg-yellow-100 border-yellow-400 text-yellow-700"; 
+                    else if(ans) cls="bg-gray-800 border-gray-800 text-white"; 
+                    return <button key={q.id} onClick={()=>{setCurrentQuestionIndex(idx); setIsSidebarOpen(false)}} className={`h-10 rounded text-sm relative ${cls}`}>{idx+1}{ragu&&<span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-yellow-400 rounded-full border border-white"/>}</button>
+                })}
+            </div>
+            <div className="p-4 border-t bg-gray-50">
+                <button onClick={finishExam} className="w-full py-2.5 bg-red-600 text-white rounded font-bold">Selesai Ujian</button>
+            </div>
+        </div>
+      </div>
+      <footer className="bg-white border-t h-16 flex items-center justify-between px-4 z-20 shrink-0">
+          <button onClick={()=>setCurrentQuestionIndex(p=>p-1)} disabled={currentQuestionIndex===0} className="flex items-center px-4 py-2 border rounded disabled:opacity-50 text-sm">
+              <ChevronLeft className="mr-1 w-4 h-4"/> <span className="hidden md:inline">Sebelumnya</span>
+          </button>
+          
+          <label className="flex items-center cursor-pointer select-none">
+              <input type="checkbox" className="sr-only" checked={raguRagu[currentQuestion.id]||false} onChange={()=>setRaguRagu({...raguRagu,[currentQuestion.id]:!raguRagu[currentQuestion.id]})}/>
+              <div className={`w-10 h-6 rounded-full transition ${raguRagu[currentQuestion.id]?'bg-yellow-400':'bg-gray-300'}`}/>
+              <span className="ml-2 font-medium text-sm">Ragu-ragu</span>
+          </label>
+          
+          {currentQuestionIndex<processedQuestions.length-1 ? 
+              <button onClick={()=>setCurrentQuestionIndex(p=>p+1)} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded text-sm">
+                  <span className="hidden md:inline">Selanjutnya</span> <ChevronRight className="ml-1 w-4 h-4"/>
+              </button> : 
+              <button onClick={finishExam} className="flex items-center px-4 py-2 bg-green-600 text-white rounded text-sm">
+                  Selesai <CheckCircle className="ml-1 w-4 h-4"/>
+              </button>
+          }
+      </footer>
     </div>
   );
 };
