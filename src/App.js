@@ -953,6 +953,390 @@ const AdminDashboard = ({
         ))}
         {activeTab === 'monitoring' && <MonitoringView activeExam={activeExam} results={results} students={students} />}
       </div>
+
+      <div className="flex flex-1 overflow-hidden relative">
+        <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
+          {/* Stimulus Section (Kiri/Atas) */}
+          <div className="md:w-1/2 w-full h-1/2 md:h-full overflow-y-auto border-r bg-white p-6">
+              <div className="max-w-3xl mx-auto">
+                  <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full mb-4 inline-block">{currentQuestion.category}</span>
+                  <h2 className="text-xl font-bold mb-4">{currentQuestion.stimulus.title}</h2>
+                  {currentQuestion.stimulus.image && (<div className="mb-4 rounded-lg overflow-hidden border"><img src={currentQuestion.stimulus.image} className="w-full h-auto" alt="Stimulus"/></div>)}
+                  <div className="prose prose-blue text-gray-700 leading-relaxed text-lg"><FormattedText text={currentQuestion.stimulus.content}/></div>
+              </div>
+          </div>
+
+          {/* Soal Section (Kanan/Bawah) */}
+          <div className="md:w-1/2 w-full h-1/2 md:h-full overflow-y-auto bg-[#f7fafc] p-6">
+              <div className="max-w-2xl mx-auto pb-20">
+                  <div className="flex justify-between items-start mb-4">
+                      <span className="text-sm font-medium text-gray-500">Soal No. {currentQuestionIndex + 1}</span>
+                      <span className="text-xs px-2 py-1 rounded bg-gray-200">{currentQuestion.type==='multiple'?'Pilihan Ganda Kompleks':'Pilihan Ganda'}</span>
+                  </div>
+                  <div className="text-lg font-medium mb-6"><FormattedText text={currentQuestion.question}/></div>
+                  <div className="space-y-3">
+                      {currentQuestion.options.map(opt => {
+                          const sel = (answers[currentQuestion.id]||[]).includes(opt.id); 
+                          return (
+                              <div key={opt.id} onClick={()=>handleAnswer(opt.id)} className={`flex p-4 rounded border-2 cursor-pointer ${sel?'border-blue-500 bg-blue-50':'border-gray-200 bg-white'}`}>
+                                  <div className={`w-6 h-6 flex items-center justify-center border-2 mr-4 ${currentQuestion.type==='multiple'?'rounded':'rounded-full'} ${sel?'bg-blue-500 border-blue-500 text-white':'border-gray-300'}`}>
+                                      {sel && (currentQuestion.type==='multiple'?<CheckCircle size={14}/>:<div className="w-2.5 h-2.5 bg-white rounded-full"/>)}
+                                      {!sel && <span className="text-xs font-bold text-gray-400">{activeExam.randomizeOptions ? '-' : opt.id}</span>}
+                                  </div>
+                                  <span className="flex-1 text-sm md:text-base"><FormattedText text={opt.text}/></span>
+                              </div>
+                          )
+                      })}
+                  </div>
+              </div>
+          </div>
+        </main>
+
+        {/* Sidebar Navigasi Soal */}
+        <div className={`fixed inset-y-0 right-0 z-30 w-72 bg-white shadow-2xl transform transition-transform border-l flex flex-col ${isSidebarOpen || window.innerWidth >= 768 ? 'translate-x-0' : 'translate-x-full md:translate-x-0'} md:relative md:w-80 md:shadow-none`}>
+            <div className="p-4 border-b flex justify-between bg-gray-50 font-bold text-gray-700">
+                <span>Daftar Soal</span>
+                <button onClick={()=>setIsSidebarOpen(false)} className="md:hidden"><X/></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 grid grid-cols-5 gap-2 content-start">
+                {processedQuestions.map((q, idx) => {
+                    const ans = answers[q.id]?.length > 0; 
+                    const active = currentQuestionIndex === idx; 
+                    const ragu = raguRagu[q.id]; 
+                    let cls = "border bg-white"; 
+                    if(active) cls="border-blue-600 bg-blue-50 ring-2 ring-blue-100 text-blue-700 font-bold"; 
+                    else if(ragu) cls="bg-yellow-100 border-yellow-400 text-yellow-700"; 
+                    else if(ans) cls="bg-gray-800 border-gray-800 text-white"; 
+                    return <button key={q.id} onClick={()=>{setCurrentQuestionIndex(idx); setIsSidebarOpen(false)}} className={`h-10 rounded text-sm relative ${cls}`}>{idx+1}{ragu&&<span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-yellow-400 rounded-full border border-white"/>}</button>
+                })}
+            </div>
+            <div className="p-4 border-t bg-gray-50">
+                <button onClick={finishExam} className="w-full py-2.5 bg-red-600 text-white rounded font-bold">Selesai Ujian</button>
+            </div>
+        </div>
+      </div>
+      <footer className="bg-white border-t h-16 flex items-center justify-between px-4 z-20 shrink-0">
+          <button onClick={()=>setCurrentQuestionIndex(p=>p-1)} disabled={currentQuestionIndex===0} className="flex items-center px-4 py-2 border rounded disabled:opacity-50 text-sm">
+              <ChevronLeft className="mr-1 w-4 h-4"/> <span className="hidden md:inline">Sebelumnya</span>
+          </button>
+          
+          <label className="flex items-center cursor-pointer select-none">
+              <input type="checkbox" className="sr-only" checked={raguRagu[currentQuestion.id]||false} onChange={()=>setRaguRagu({...raguRagu,[currentQuestion.id]:!raguRagu[currentQuestion.id]})}/>
+              <div className={`w-10 h-6 rounded-full transition ${raguRagu[currentQuestion.id]?'bg-yellow-400':'bg-gray-300'}`}/>
+              <span className="ml-2 font-medium text-sm">Ragu-ragu</span>
+          </label>
+          
+          {currentQuestionIndex<processedQuestions.length-1 ? 
+              <button onClick={()=>setCurrentQuestionIndex(p=>p+1)} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded text-sm">
+                  <span className="hidden md:inline">Selanjutnya</span> <ChevronRight className="ml-1 w-4 h-4"/>
+              </button> : 
+              <button onClick={finishExam} className="flex items-center px-4 py-2 bg-green-600 text-white rounded text-sm">
+                  Selesai <CheckCircle className="ml-1 w-4 h-4"/>
+              </button>
+          }
+      </footer>
+    </div>
+  );
+};
+
+// --- SISWA ---
+const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
+  const [processedQuestions, setProcessedQuestions] = useState([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [raguRagu, setRaguRagu] = useState({});
+  const [timeLeft, setTimeLeft] = useState(0); 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [examFinished, setExamFinished] = useState(false);
+  const [score, setScore] = useState(0);
+  
+  const resultDocId = `${activeExam?.id}_${currentUser.id}`;
+
+  useEffect(() => {
+    if (activeExam) {
+      let qList = questions.filter(q => activeExam.questionIds.includes(q.id));
+      if (activeExam.randomizeQuestions) qList = shuffleArray(qList);
+      
+      // Randomize options ONLY for Single/Multiple choice
+      if (activeExam.randomizeOptions) {
+        qList = qList.map(q => {
+          if (q.type === 'single' || q.type === 'multiple') {
+            return {...q, options: shuffleArray([...q.options])};
+          }
+          return q;
+        });
+      }
+      setProcessedQuestions(qList); 
+      setTimeLeft(activeExam.duration * 60);
+      
+      const resultData = {
+        examId: activeExam.id,
+        studentId: currentUser.id,
+        studentName: currentUser.name,
+        status: 'ongoing',
+        answeredCount: 0,
+        score: 0,
+        timestamp: new Date().toISOString()
+      };
+      
+      try {
+        setDoc(getDocRef('results', resultDocId), resultData, { merge: true });
+      } catch (e) { console.error("Error init exam:", e); }
+    }
+  }, [activeExam?.id, questions, currentUser.id]);
+
+  useEffect(() => {
+    if (timeLeft > 0 && !examFinished) {
+      const timerId = setInterval(() => setTimeLeft(p => p - 1), 1000);
+      return () => clearInterval(timerId);
+    } else if (timeLeft === 0 && !examFinished && activeExam && processedQuestions.length > 0) {
+      finishExam();
+    }
+  }, [timeLeft, examFinished, activeExam, processedQuestions.length]);
+
+  const finishExam = async () => {
+    let totalScore = 0;
+    
+    processedQuestions.forEach(q => {
+      const userAns = answers[q.id];
+      const originalQuestion = questions.find(oq => oq.id === q.id); 
+      if (!originalQuestion) return;
+
+      // Logika Penilaian
+      if (q.type === 'single') {
+         if (userAns && userAns.length > 0 && originalQuestion.correctAnswer.includes(userAns[0])) {
+           totalScore += 1;
+         }
+      } 
+      else if (q.type === 'multiple') {
+         // Strict Scoring: Harus sama persis
+         const u = (userAns || []).sort();
+         const c = [...originalQuestion.correctAnswer].sort();
+         if (JSON.stringify(u) === JSON.stringify(c)) totalScore += 1;
+      }
+      else if (q.type === 'true_false') {
+         // Partial Scoring: Poin per pernyataan benar
+         // Jika ada 3 pernyataan, maka tiap baris bernilai 1/3 poin
+         const statements = originalQuestion.trueFalseStatements || [];
+         let correctCount = 0;
+         statements.forEach(st => {
+            // userAns is object like { s1: true, s2: false }
+            if (userAns && userAns[st.id] === st.correct) {
+               correctCount++;
+            }
+         });
+         if (statements.length > 0) {
+            totalScore += (correctCount / statements.length);
+         }
+      }
+    });
+
+    const finalScore = (totalScore / processedQuestions.length) * 100;
+    setScore(finalScore);
+    setExamFinished(true);
+    
+    if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(err => console.log(err));
+    }
+    
+    try {
+        await setDoc(getDocRef('results', resultDocId), {
+            status: 'finished',
+            score: finalScore,
+            answeredCount: Object.keys(answers).length
+        }, { merge: true });
+    } catch(e) { console.error(e); }
+  };
+
+  const handleAnswer = async (value, type, subId = null) => {
+    if(examFinished) return;
+    const currentQ = processedQuestions[currentQuestionIndex];
+    const curr = answers[currentQ.id];
+    let next;
+
+    if (type === 'single') {
+        next = [value];
+    } else if (type === 'multiple') {
+        const c = curr || [];
+        next = c.includes(value) ? c.filter(id=>id!==value) : [...c, value];
+    } else if (type === 'true_false') {
+        // value is boolean (true/false), subId is statement ID
+        next = { ...(curr || {}), [subId]: value };
+    }
+    
+    const newAnswers = {...answers, [currentQ.id]: next};
+    setAnswers(newAnswers);
+
+    try {
+        setDoc(getDocRef('results', resultDocId), {
+            answeredCount: Object.keys(newAnswers).length
+        }, { merge: true });
+    } catch(e) { console.error(e); }
+  };
+
+  if (!activeExam) return (<div className="h-screen flex flex-col items-center justify-center bg-gray-50"><div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md"><div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"><StopCircle size={32} /></div><h2 className="text-xl font-bold text-gray-800">Tidak Ada Ujian Aktif</h2><p className="text-gray-500 mb-6">Halo, {currentUser.name}. Saat ini belum ada ujian yang aktif.</p><button onClick={onLogout} className="px-6 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg transition">Keluar</button></div></div>);
+  if (processedQuestions.length === 0) return <div className="h-screen flex items-center justify-center">Loading ujian...</div>;
+
+  if (examFinished) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white max-w-lg w-full rounded-xl shadow-lg p-8 text-center">
+          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4"/>
+          <h2 className="text-2xl font-bold mb-2">Ujian Selesai!</h2>
+          <p className="text-gray-500 mb-4">Terima kasih, {currentUser.name}.</p>
+          <div className="bg-blue-50 p-6 rounded mb-6"><span className="text-sm font-bold text-blue-600 uppercase">Nilai Akhir</span><div className="text-5xl font-bold text-blue-800 mt-2">{score.toFixed(1)}</div></div>
+          <button onClick={onLogout} className="w-full bg-gray-800 hover:bg-gray-900 text-white py-3 rounded font-bold transition">Keluar Aplikasi</button>
+        </div>
+      </div>
+    );
+  }
+
+  const currentQuestion = processedQuestions[currentQuestionIndex];
+  const currentAns = answers[currentQuestion.id];
+
+  return (
+    // Gunakan h-[100dvh] untuk mobile browser (address bar issue)
+    <div className="flex flex-col h-screen h-[100dvh] bg-gray-100 font-sans text-gray-800 overflow-hidden">
+      <header className="bg-[#2d3748] text-white h-16 flex items-center justify-between px-4 shadow z-20 shrink-0">
+        <div className="flex items-center space-x-4"><div className="bg-blue-600 w-10 h-10 rounded flex items-center justify-center font-bold text-xl">A</div><div><h1 className="font-semibold text-lg">{activeExam.title}</h1><p className="text-xs text-gray-400">Peserta: {currentUser.name}</p></div></div>
+        <div className="flex items-center gap-4">
+            <div className="hidden md:flex items-center bg-gray-700 px-3 py-1.5 rounded-full border border-gray-600 font-mono"><Clock className="w-4 h-4 mr-2 text-yellow-400" />{Math.floor(timeLeft/60).toString().padStart(2,'0')}:{(timeLeft%60).toString().padStart(2,'0')}</div>
+            {/* Tombol Menu Mobile */}
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-2 rounded hover:bg-gray-700"><Menu/></button>
+        </div>
+      </header>
+      
+      {/* Timer Floating untuk Mobile */}
+      <div className="md:hidden bg-yellow-100 text-yellow-800 text-center text-xs font-bold py-1 border-b border-yellow-200">
+        Sisa Waktu: {Math.floor(timeLeft/60).toString().padStart(2,'0')}:{(timeLeft%60).toString().padStart(2,'0')}
+      </div>
+
+      <div className="flex flex-1 overflow-hidden relative">
+        <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
+          {/* Stimulus Section (Kiri/Atas) */}
+          <div className="md:w-1/2 w-full h-1/2 md:h-full overflow-y-auto border-r bg-white p-6">
+              <div className="max-w-3xl mx-auto">
+                  <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full mb-4 inline-block">{currentQuestion.category}</span>
+                  <h2 className="text-xl font-bold mb-4">{currentQuestion.stimulus.title}</h2>
+                  {currentQuestion.stimulus.image && (<div className="mb-4 rounded-lg overflow-hidden border"><img src={getOptimizedImageUrl(currentQuestion.stimulus.image)} className="w-full h-auto" alt="Stimulus"/></div>)}
+                  <div className="prose prose-blue text-gray-700 leading-relaxed text-lg"><FormattedText text={currentQuestion.stimulus.content}/></div>
+              </div>
+          </div>
+
+          {/* Soal Section (Kanan/Bawah) */}
+          <div className="md:w-1/2 w-full h-1/2 md:h-full overflow-y-auto bg-[#f7fafc] p-6">
+              <div className="max-w-2xl mx-auto pb-20">
+                  <div className="flex justify-between items-start mb-4">
+                      <span className="text-sm font-medium text-gray-500">Soal No. {currentQuestionIndex + 1}</span>
+                      <span className="text-xs px-2 py-1 rounded bg-gray-200 uppercase">{currentQuestion.type.replace('_', ' ')}</span>
+                  </div>
+                  <div className="text-lg font-medium mb-6"><FormattedText text={currentQuestion.question}/></div>
+                  <div className="space-y-3">
+                      
+                      {/* RENDER PILIHAN GANDA / KOMPLEKS */}
+                      {(currentQuestion.type === 'single' || currentQuestion.type === 'multiple') && currentQuestion.options.map(opt => {
+                          const sel = (currentAns || []).includes(opt.id); 
+                          return (
+                              <div key={opt.id} onClick={()=>handleAnswer(opt.id, currentQuestion.type)} className={`flex p-4 rounded border-2 cursor-pointer ${sel?'border-blue-500 bg-blue-50':'border-gray-200 bg-white'}`}>
+                                  <div className={`w-6 h-6 flex items-center justify-center border-2 mr-4 ${currentQuestion.type==='multiple'?'rounded':'rounded-full'} ${sel?'bg-blue-500 border-blue-500 text-white':'border-gray-300'}`}>
+                                      {sel && (currentQuestion.type==='multiple'?<CheckCircle size={14}/>:<div className="w-2.5 h-2.5 bg-white rounded-full"/>)}
+                                      {!sel && <span className="text-xs font-bold text-gray-400">{activeExam.randomizeOptions ? '-' : opt.id}</span>}
+                                  </div>
+                                  <span className="flex-1 text-sm md:text-base"><FormattedText text={opt.text}/></span>
+                              </div>
+                          )
+                      })}
+
+                      {/* RENDER BENAR / SALAH */}
+                      {currentQuestion.type === 'true_false' && (
+                        <div className="overflow-x-auto bg-white rounded shadow border">
+                           <table className="w-full text-sm text-left">
+                             <thead className="bg-gray-100 font-bold text-gray-600"><tr><th className="p-3">Pernyataan</th><th className="p-3 w-20 text-center">Benar</th><th className="p-3 w-20 text-center">Salah</th></tr></thead>
+                             <tbody className="divide-y">
+                               {(currentQuestion.trueFalseStatements || []).map(st => (
+                                 <tr key={st.id}>
+                                   <td className="p-3"><FormattedText text={st.text}/></td>
+                                   <td className="p-3 text-center">
+                                     <input 
+                                       type="radio" 
+                                       name={`tf-${st.id}`} 
+                                       checked={(currentAns || {})[st.id] === true} 
+                                       onChange={() => handleAnswer(true, 'true_false', st.id)} 
+                                       className="w-5 h-5 accent-blue-600 cursor-pointer"
+                                     />
+                                   </td>
+                                   <td className="p-3 text-center">
+                                     <input 
+                                       type="radio" 
+                                       name={`tf-${st.id}`} 
+                                       checked={(currentAns || {})[st.id] === false} 
+                                       onChange={() => handleAnswer(false, 'true_false', st.id)} 
+                                       className="w-5 h-5 accent-blue-600 cursor-pointer"
+                                     />
+                                   </td>
+                                 </tr>
+                               ))}
+                             </tbody>
+                           </table>
+                        </div>
+                      )}
+
+                  </div>
+              </div>
+          </div>
+        </main>
+
+        {/* Sidebar Navigasi Soal */}
+        <div className={`fixed inset-y-0 right-0 z-30 w-72 bg-white shadow-2xl transform transition-transform border-l flex flex-col ${isSidebarOpen || window.innerWidth >= 768 ? 'translate-x-0' : 'translate-x-full md:translate-x-0'} md:relative md:w-80 md:shadow-none`}>
+            <div className="p-4 border-b flex justify-between bg-gray-50 font-bold text-gray-700">
+                <span>Daftar Soal</span>
+                <button onClick={()=>setIsSidebarOpen(false)} className="md:hidden"><X/></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 grid grid-cols-5 gap-2 content-start">
+                {processedQuestions.map((q, idx) => {
+                    // Logic Cek Jawaban:
+                    let hasAns = false;
+                    const ansData = answers[q.id];
+                    if (q.type === 'single' || q.type === 'multiple') {
+                        hasAns = ansData && ansData.length > 0;
+                    } else if (q.type === 'true_false') {
+                        hasAns = ansData && Object.keys(ansData).length > 0;
+                    }
+
+                    const active = currentQuestionIndex === idx; 
+                    const ragu = raguRagu[q.id]; 
+                    let cls = "border bg-white"; 
+                    if(active) cls="border-blue-600 bg-blue-50 ring-2 ring-blue-100 text-blue-700 font-bold"; 
+                    else if(ragu) cls="bg-yellow-100 border-yellow-400 text-yellow-700"; 
+                    else if(hasAns) cls="bg-gray-800 border-gray-800 text-white"; 
+                    return <button key={q.id} onClick={()=>{setCurrentQuestionIndex(idx); setIsSidebarOpen(false)}} className={`h-10 rounded text-sm relative ${cls}`}>{idx+1}{ragu&&<span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-yellow-400 rounded-full border border-white"/>}</button>
+                })}
+            </div>
+            <div className="p-4 border-t bg-gray-50">
+                <button onClick={finishExam} className="w-full py-2.5 bg-red-600 text-white rounded font-bold">Selesai Ujian</button>
+            </div>
+        </div>
+      </div>
+      <footer className="bg-white border-t h-16 flex items-center justify-between px-4 z-20 shrink-0">
+          <button onClick={()=>setCurrentQuestionIndex(p=>p-1)} disabled={currentQuestionIndex===0} className="flex items-center px-4 py-2 border rounded disabled:opacity-50 text-sm">
+              <ChevronLeft className="mr-1 w-4 h-4"/> <span className="hidden md:inline">Sebelumnya</span>
+          </button>
+          
+          <label className="flex items-center cursor-pointer select-none">
+              <input type="checkbox" className="sr-only" checked={raguRagu[currentQuestion.id]||false} onChange={()=>setRaguRagu({...raguRagu,[currentQuestion.id]:!raguRagu[currentQuestion.id]})}/>
+              <div className={`w-10 h-6 rounded-full transition ${raguRagu[currentQuestion.id]?'bg-yellow-400':'bg-gray-300'}`}/>
+              <span className="ml-2 font-medium text-sm">Ragu-ragu</span>
+          </label>
+          
+          {currentQuestionIndex<processedQuestions.length-1 ? 
+              <button onClick={()=>setCurrentQuestionIndex(p=>p+1)} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded text-sm">
+                  <span className="hidden md:inline">Selanjutnya</span> <ChevronRight className="ml-1 w-4 h-4"/>
+              </button> : 
+              <button onClick={finishExam} className="flex items-center px-4 py-2 bg-green-600 text-white rounded text-sm">
+                  Selesai <CheckCircle className="ml-1 w-4 h-4"/>
+              </button>
+          }
+      </footer>
     </div>
   );
 };
