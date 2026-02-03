@@ -53,6 +53,7 @@ const Database = (p) => <IconWrapper {...p}><ellipse cx="12" cy="5" rx="9" ry="3
 const UserPlus = (p) => <IconWrapper {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></IconWrapper>;
 const Maximize = (p) => <IconWrapper {...p}><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></IconWrapper>;
 const Filter = (p) => <IconWrapper {...p}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></IconWrapper>;
+const ClipboardList = (p) => <IconWrapper {...p}><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M9 12h6"/><path d="M9 16h6"/></IconWrapper>;
 
 // --- KONFIGURASI FIREBASE ---
 const firebaseConfig = {
@@ -347,11 +348,10 @@ const QuestionEditor = ({ qForm, setQForm, onSave, onCancel }) => {
             placeholder="Pertanyaan..."
           />
           
-          {/* EDITOR PILIHAN GANDA / KOMPLEKS */}
           {(qForm.type === 'single' || qForm.type === 'multiple') && (
             <div className="bg-gray-50 p-4 rounded border">
               <h4 className="font-bold text-sm mb-3 text-gray-500 uppercase">Opsi Jawaban</h4>
-              {qForm.options.map((opt, idx) => (
+              {(qForm.options || []).map((opt, idx) => (
                 <div key={idx} className="flex items-center mb-2">
                   <span className="w-8 font-bold text-gray-500">{opt.id}.</span>
                   <input 
@@ -359,7 +359,7 @@ const QuestionEditor = ({ qForm, setQForm, onSave, onCancel }) => {
                     onChange={e => {
                       const val = e.target.value;
                       setQForm(prev => {
-                        const newOptions = [...prev.options];
+                        const newOptions = [...(prev.options || [])];
                         newOptions[idx] = { ...newOptions[idx], text: val };
                         return { ...prev, options: newOptions };
                       });
@@ -369,12 +369,13 @@ const QuestionEditor = ({ qForm, setQForm, onSave, onCancel }) => {
                   />
                   <input 
                     type={qForm.type === 'single' ? 'radio' : 'checkbox'} 
-                    checked={qForm.correctAnswer.includes(opt.id)} 
+                    checked={(qForm.correctAnswer || []).includes(opt.id)} 
                     onChange={() => {
                       setQForm(prev => {
                         let nc;
+                        const prevCorrect = prev.correctAnswer || [];
                         if (prev.type === 'single') nc = [opt.id];
-                        else nc = prev.correctAnswer.includes(opt.id) ? prev.correctAnswer.filter(c => c !== opt.id) : [...prev.correctAnswer, opt.id];
+                        else nc = prevCorrect.includes(opt.id) ? prevCorrect.filter(c => c !== opt.id) : [...prevCorrect, opt.id];
                         return { ...prev, correctAnswer: nc };
                       });
                     }} 
@@ -385,7 +386,6 @@ const QuestionEditor = ({ qForm, setQForm, onSave, onCancel }) => {
             </div>
           )}
 
-          {/* EDITOR BENAR / SALAH */}
           {qForm.type === 'true_false' && (
             <div className="bg-gray-50 p-4 rounded border">
               <h4 className="font-bold text-sm mb-3 text-gray-500 uppercase">Pernyataan Benar / Salah</h4>
@@ -417,6 +417,100 @@ const QuestionEditor = ({ qForm, setQForm, onSave, onCancel }) => {
           <Save className="w-4 h-4 mr-2" /> Simpan
         </button>
       </div>
+    </div>
+  );
+};
+
+// --- NEW COMPONENT: HISTORY VIEW ---
+const HistoryView = ({ results, exams, students }) => {
+  const [filterExam, setFilterExam] = useState('all');
+
+  // Urutkan berdasarkan timestamp (terbaru di atas)
+  const sortedResults = [...results].sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+
+  // Filter
+  const filteredResults = filterExam === 'all' 
+    ? sortedResults 
+    : sortedResults.filter(r => r.examId === filterExam);
+
+  // Helper untuk mendapatkan nama ujian
+  const getExamTitle = (examId) => {
+    const ex = exams.find(e => e.id === examId);
+    return ex ? ex.title : 'Ujian Dihapus';
+  };
+
+  // Helper untuk nama siswa (fallback jika studentName tidak tersimpan di result)
+  const getStudentName = (res) => {
+    if (res.studentName) return res.studentName;
+    const st = students.find(s => s.id === res.studentId);
+    return st ? st.name : 'Siswa Dihapus';
+  };
+
+  const handleDeleteResult = async (id) => {
+    if (confirm("Hapus data riwayat ini secara permanen?")) {
+      await deleteDoc(getDocRef('results', id));
+    }
+  };
+
+  return (
+    <div className="space-y-6 print-container">
+       <div className="print-header"><h1>RIWAYAT HASIL UJIAN</h1><p>Dicetak pada: {new Date().toLocaleDateString()}</p></div>
+       
+       <div className="flex flex-col md:flex-row justify-between items-center no-print gap-4">
+         <div>
+            <h2 className="text-2xl font-bold">Riwayat Hasil</h2>
+            <p className="text-gray-500 text-sm">Arsip semua pengerjaan siswa.</p>
+         </div>
+         <div className="flex gap-2">
+            <select className="border p-2 rounded" value={filterExam} onChange={e => setFilterExam(e.target.value)}>
+               <option value="all">Semua Paket Ujian</option>
+               {exams.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
+            </select>
+            <button onClick={() => window.print()} className="flex items-center bg-gray-800 text-white px-4 py-2 rounded shadow-sm">
+                <Printer size={16} className="mr-2"/> Cetak
+            </button>
+         </div>
+       </div>
+
+       <div className="bg-white rounded-lg shadow overflow-hidden border print-card overflow-x-auto">
+         <table className="w-full text-left text-sm min-w-[700px]">
+           <thead className="bg-gray-50 text-gray-700 font-bold border-b">
+             <tr>
+               <th className="p-4">Waktu</th>
+               <th className="p-4">Siswa</th>
+               <th className="p-4">Paket Ujian</th>
+               <th className="p-4 text-center">Status</th>
+               <th className="p-4 text-center">Nilai</th>
+               <th className="p-4 text-center no-print">Aksi</th>
+             </tr>
+           </thead>
+           <tbody className="divide-y">
+             {filteredResults.map(res => (
+               <tr key={res.id} className="hover:bg-gray-50">
+                 <td className="p-4 text-gray-500">
+                    {res.timestamp ? new Date(res.timestamp).toLocaleString() : '-'}
+                 </td>
+                 <td className="p-4 font-medium">{getStudentName(res)}</td>
+                 <td className="p-4"><span className="px-2 py-1 bg-gray-100 rounded text-xs border">{getExamTitle(res.examId)}</span></td>
+                 <td className="p-4 text-center">
+                    {res.status === 'finished' 
+                      ? <span className="text-green-600 bg-green-50 px-2 py-1 rounded text-xs font-bold">Selesai</span> 
+                      : <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded text-xs font-bold">Proses</span>}
+                 </td>
+                 <td className="p-4 text-center font-bold text-lg">
+                    {res.score !== undefined ? res.score.toFixed(1) : '-'}
+                 </td>
+                 <td className="p-4 text-center no-print">
+                    <button onClick={() => handleDeleteResult(res.id)} className="text-red-500 p-2 hover:bg-red-50 rounded"><Trash2 size={16}/></button>
+                 </td>
+               </tr>
+             ))}
+             {filteredResults.length === 0 && (
+               <tr><td colSpan="6" className="p-8 text-center text-gray-400">Belum ada data riwayat.</td></tr>
+             )}
+           </tbody>
+         </table>
+       </div>
     </div>
   );
 };
@@ -453,7 +547,7 @@ const MonitoringView = ({ activeExam, results, students }) => {
               {students.map(s => {
                 const res = currentResults.find(r => r.studentId === s.id);
                 const status = res ? res.status : 'not_started';
-                const total = activeExam.questionIds.length;
+                const total = (activeExam.questionIds || []).length; 
                 const answered = res ? res.answeredCount : 0;
                 const percent = total > 0 ? (answered / total) * 100 : 0;
                 
@@ -466,7 +560,7 @@ const MonitoringView = ({ activeExam, results, students }) => {
                       {status === 'finished' && <span className="px-2 py-1 bg-green-100 text-green-600 rounded text-xs font-bold">Selesai</span>}
                     </td>
                     <td className="p-4 no-print"><div className="flex items-center gap-2"><div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden border border-gray-300"><div className={`h-full rounded-full transition-all duration-500 ${status === 'finished' ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${percent}%` }}></div></div><span className="text-xs font-mono">{answered}/{total}</span></div></td>
-                    <td className="p-4 text-center">{status === 'finished' ? <span className="font-bold text-lg text-gray-800">{res.score.toFixed(1)}</span> : <span className="text-gray-400">-</span>}</td>
+                    <td className="p-4 text-center">{status === 'finished' && res.score !== undefined ? <span className="font-bold text-lg text-gray-800">{res.score.toFixed(1)}</span> : <span className="text-gray-400">-</span>}</td>
                     <td className="p-4 text-center no-print">{res && <button onClick={() => handleReset(res.id)} className="text-red-600 hover:bg-red-50 px-2 py-1 rounded text-xs border border-red-200">Reset</button>}</td>
                   </tr>
                 );
@@ -480,7 +574,7 @@ const MonitoringView = ({ activeExam, results, students }) => {
 
 // --- LOGIN SCREEN ---
 const LoginScreen = ({ onLogin, students, admins, loading, isAuthReady }) => {
-  const [view, setView] = useState('select'); // 'select' | 'form'
+  const [view, setView] = useState('select');
   const [role, setRole] = useState(null);
   const [isRegistering, setIsRegistering] = useState(false); 
   const [formData, setFormData] = useState({ name: '', username: '', password: '' });
@@ -502,7 +596,6 @@ const LoginScreen = ({ onLogin, students, admins, loading, isAuthReady }) => {
     setError('');
     setSuccessMsg('');
 
-    // Trigger Full Screen saat tombol submit ditekan
     if (role === 'student') {
         toggleFullScreen();
     }
@@ -552,7 +645,6 @@ const LoginScreen = ({ onLogin, students, admins, loading, isAuthReady }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 to-gray-900 flex items-center justify-center p-4 font-sans">
-      {/* Tombol Fullscreen Manual (Pojok Kanan Atas) */}
       <button 
         onClick={toggleFullScreen}
         className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full transition-all"
@@ -690,27 +782,21 @@ const AdminDashboard = ({
   onLogout 
 }) => {
   const [activeTab, setActiveTab] = useState('questions'); 
-  const [categoryFilter, setCategoryFilter] = useState('Semua'); // NEW: Filter State
+  const [categoryFilter, setCategoryFilter] = useState('Semua'); 
   const [examView, setExamView] = useState('list');
   const fileInputRef = useRef(null);
   
-  // FIX: Definisi activeExam yang hilang sebelumnya
-  const activeExam = exams.find(e => e.isActive);
+  const activeExam = (exams || []).find(e => e.isActive);
 
-  // Forms State
   const [isEditingQ, setIsEditingQ] = useState(false);
   const [qForm, setQForm] = useState(null);
   const [examForm, setExamForm] = useState({ title: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false });
   const [isEditingStudent, setIsEditingStudent] = useState(false);
   const [studentForm, setStudentForm] = useState({ name: '', username: '', password: '' });
 
-  // Filter Logic
   const filteredQuestions = categoryFilter === 'Semua' ? questions : questions.filter(q => q.category === categoryFilter);
   const uniqueCategories = ['Semua', ...new Set(questions.map(q => q.category).filter(Boolean))];
 
-  // --- ACTIONS (FIRESTORE) ---
-
-  // Questions
   const handleEditQ = (q) => { setQForm({ ...q }); setIsEditingQ(true); };
   const handleCreateQ = () => { 
     setQForm({ 
@@ -719,7 +805,7 @@ const AdminDashboard = ({
       question:'', 
       options:[{id:'A',text:''},{id:'B',text:''},{id:'C',text:''},{id:'D',text:''}], 
       correctAnswer:[],
-      trueFalseStatements: [{id: 's1', text: '', correct: true}] // Init untuk B/S
+      trueFalseStatements: [{id: 's1', text: '', correct: true}] 
     }); 
     setIsEditingQ(true); 
   };
@@ -736,7 +822,6 @@ const AdminDashboard = ({
     } catch (e) { alert("Gagal menyimpan: " + e.message); }
   };
 
-  // Exams
   const openExamForm = (e=null) => { 
     setExamForm(e ? {...e} : { title: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false }); 
     setExamView('form'); 
@@ -760,7 +845,6 @@ const AdminDashboard = ({
   };
   const toggleQuestionSelection = (qid) => { const s=examForm.questionIds; setExamForm({...examForm, questionIds: s.includes(qid)?s.filter(id=>id!==qid):[...s,qid]}); };
 
-  // Students
   const handleSaveStudent = async () => {
     if(!studentForm.username) return alert("Username wajib diisi!");
     try {
@@ -775,7 +859,6 @@ const AdminDashboard = ({
   };
   const handleDeleteStudent = async (id) => { if(window.confirm('Hapus siswa?')) await deleteDoc(getDocRef('students', id)); };
 
-  // Import CSV
   const handleImportClick = () => fileInputRef.current.click();
   const handleFileChange = (e) => {
     const file = e.target.files[0]; if(!file) return;
@@ -803,7 +886,6 @@ const AdminDashboard = ({
     reader.readAsText(file);
   };
 
-  // SEED DATA FUNCTION
   const handleSeedData = async () => {
     if(!window.confirm("Database Anda akan diisi dengan data contoh (Soal, Siswa, Ujian). Lanjutkan?")) return;
     try {
@@ -821,7 +903,6 @@ const AdminDashboard = ({
         const newRef = doc(getCollectionRef('exams'));
         batch.set(newRef, e);
       });
-      // Seed Admin juga jika belum ada
       SEED_DATA.admins.forEach(a => {
         const newRef = doc(getCollectionRef('admins'));
         batch.set(newRef, a);
@@ -848,6 +929,7 @@ const AdminDashboard = ({
           <button onClick={() => setActiveTab('exams')} className={`px-4 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'exams' ? 'bg-white shadow' : 'text-gray-600'}`}><Calendar size={16} className="mr-2"/> Paket Ujian</button>
           <button onClick={() => setActiveTab('students')} className={`px-4 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'students' ? 'bg-white shadow' : 'text-gray-600'}`}><Users size={16} className="mr-2"/> Peserta</button>
           <button onClick={() => setActiveTab('monitoring')} className={`px-4 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'monitoring' ? 'bg-white shadow' : 'text-gray-600'}`}><Activity size={16} className="mr-2"/> Pemantauan</button>
+          <button onClick={() => setActiveTab('history')} className={`px-4 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'history' ? 'bg-white shadow' : 'text-gray-600'}`}><ClipboardList size={16} className="mr-2"/> Riwayat</button>
         </div>
       </div>
       <div className="max-w-6xl mx-auto p-6 print-container">
@@ -878,7 +960,7 @@ const AdminDashboard = ({
                      <div className="flex-1 pr-6">
                        <div className="flex items-center space-x-2 mb-2">
                          <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs font-bold uppercase">#{idx + 1}</span>
-                         <span className="text-xs font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded uppercase">{q.type.replace('_', ' ')}</span>
+                         <span className="text-xs font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded uppercase">{(q.type || 'unknown').replace('_', ' ')}</span>
                          <span className="text-xs text-gray-400 border px-2 py-0.5 rounded">{q.category}</span>
                        </div>
                        <div className="font-semibold line-clamp-2"><FormattedText text={q.question}/></div>
@@ -952,6 +1034,7 @@ const AdminDashboard = ({
             </>
         ))}
         {activeTab === 'monitoring' && <MonitoringView activeExam={activeExam} results={results} students={students} />}
+        {activeTab === 'history' && <HistoryView results={results} exams={exams} students={students} />}
       </div>
     </div>
   );
@@ -967,11 +1050,11 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [examFinished, setExamFinished] = useState(false);
   const [score, setScore] = useState(0);
+  const [resultId, setResultId] = useState(null); // State untuk ID unik sesi ini
   
-  const resultDocId = `${activeExam?.id}_${currentUser.id}`;
-
   useEffect(() => {
-    if (activeExam) {
+    // Pastikan questions sudah dimuat sebelum inisialisasi
+    if (activeExam && questions.length > 0) {
       let qList = questions.filter(q => activeExam.questionIds.includes(q.id));
       if (activeExam.randomizeQuestions) qList = shuffleArray(qList);
       
@@ -987,19 +1070,33 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
       setProcessedQuestions(qList); 
       setTimeLeft(activeExam.duration * 60);
       
-      const resultData = {
-        examId: activeExam.id,
-        studentId: currentUser.id,
-        studentName: currentUser.name,
-        status: 'ongoing',
-        answeredCount: 0,
-        score: 0,
-        timestamp: new Date().toISOString()
-      };
-      
-      try {
-        setDoc(getDocRef('results', resultDocId), resultData, { merge: true });
-      } catch (e) { console.error("Error init exam:", e); }
+      // LOGIKA BARU: Generate ID Unik per Sesi
+      // Cek apakah ada sesi yang tersimpan di sessionStorage (untuk handle refresh)
+      const sessionKey = `exam_session_${currentUser.id}_${activeExam.id}`;
+      let currentSessionId = sessionStorage.getItem(sessionKey);
+
+      // Jika tidak ada sesi aktif di storage, buat ID baru (timestamp based)
+      if (!currentSessionId) {
+        currentSessionId = `${activeExam.id}_${currentUser.id}_${Date.now()}`;
+        sessionStorage.setItem(sessionKey, currentSessionId);
+
+        // Inisialisasi dokumen hasil baru di Firestore
+        const resultData = {
+          examId: activeExam.id,
+          studentId: currentUser.id,
+          studentName: currentUser.name,
+          status: 'ongoing',
+          answeredCount: 0,
+          score: 0,
+          timestamp: new Date().toISOString()
+        };
+        
+        try {
+          setDoc(getDocRef('results', currentSessionId), resultData, { merge: true });
+        } catch (e) { console.error("Error init exam:", e); }
+      }
+
+      setResultId(currentSessionId);
     }
   }, [activeExam?.id, questions, currentUser.id]);
 
@@ -1012,7 +1109,16 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
     }
   }, [timeLeft, examFinished, activeExam, processedQuestions.length]);
 
+  const handleLogoutWrapper = () => {
+    // Bersihkan sesi saat logout manual
+    if (activeExam && currentUser) {
+        sessionStorage.removeItem(`exam_session_${currentUser.id}_${activeExam.id}`);
+    }
+    onLogout();
+  };
+
   const finishExam = async () => {
+    if (!resultId) return;
     let totalScore = 0;
     
     processedQuestions.forEach(q => {
@@ -1053,12 +1159,16 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
     setScore(finalScore);
     setExamFinished(true);
     
+    // Hapus sesi lokal agar percobaan berikutnya membuat ID baru
+    sessionStorage.removeItem(`exam_session_${currentUser.id}_${activeExam.id}`);
+
     if (document.fullscreenElement && document.exitFullscreen) {
         document.exitFullscreen().catch(err => console.log(err));
     }
     
     try {
-        await setDoc(getDocRef('results', resultDocId), {
+        // Gunakan resultId yang unik
+        await setDoc(getDocRef('results', resultId), {
             status: 'finished',
             score: finalScore,
             answeredCount: Object.keys(answers).length
@@ -1067,7 +1177,7 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
   };
 
   const handleAnswer = async (value, type, subId = null) => {
-    if(examFinished) return;
+    if(examFinished || !resultId) return;
     const currentQ = processedQuestions[currentQuestionIndex];
     const curr = answers[currentQ.id];
     let next;
@@ -1086,13 +1196,13 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
     setAnswers(newAnswers);
 
     try {
-        setDoc(getDocRef('results', resultDocId), {
+        await setDoc(getDocRef('results', resultId), {
             answeredCount: Object.keys(newAnswers).length
         }, { merge: true });
     } catch(e) { console.error(e); }
   };
 
-  if (!activeExam) return (<div className="h-screen flex flex-col items-center justify-center bg-gray-50"><div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md"><div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"><StopCircle size={32} /></div><h2 className="text-xl font-bold text-gray-800">Tidak Ada Ujian Aktif</h2><p className="text-gray-500 mb-6">Halo, {currentUser.name}. Saat ini belum ada ujian yang aktif.</p><button onClick={onLogout} className="px-6 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg transition">Keluar</button></div></div>);
+  if (!activeExam) return (<div className="h-screen flex flex-col items-center justify-center bg-gray-50"><div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md"><div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"><StopCircle size={32} /></div><h2 className="text-xl font-bold text-gray-800">Tidak Ada Ujian Aktif</h2><p className="text-gray-500 mb-6">Halo, {currentUser.name}. Saat ini belum ada ujian yang aktif.</p><button onClick={handleLogoutWrapper} className="px-6 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg transition">Keluar</button></div></div>);
   if (processedQuestions.length === 0) return <div className="h-screen flex items-center justify-center">Loading ujian...</div>;
 
   if (examFinished) {
@@ -1103,7 +1213,7 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
           <h2 className="text-2xl font-bold mb-2">Ujian Selesai!</h2>
           <p className="text-gray-500 mb-4">Terima kasih, {currentUser.name}.</p>
           <div className="bg-blue-50 p-6 rounded mb-6"><span className="text-sm font-bold text-blue-600 uppercase">Nilai Akhir</span><div className="text-5xl font-bold text-blue-800 mt-2">{score.toFixed(1)}</div></div>
-          <button onClick={onLogout} className="w-full bg-gray-800 hover:bg-gray-900 text-white py-3 rounded font-bold transition">Keluar Aplikasi</button>
+          <button onClick={handleLogoutWrapper} className="w-full bg-gray-800 hover:bg-gray-900 text-white py-3 rounded font-bold transition">Keluar Aplikasi</button>
         </div>
       </div>
     );
