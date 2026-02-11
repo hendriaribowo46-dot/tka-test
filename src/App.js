@@ -58,6 +58,7 @@ const PenTool = (p) => <IconWrapper {...p}><path d="m12 19 7-7 3 3-7 7-3-3z"/><p
 const UsersCog = (p) => <IconWrapper {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><circle cx="19" cy="11" r="2"/><path d="M19 8v1"/><path d="M19 13v1"/></IconWrapper>;
 const ArrowUpDown = (p) => <IconWrapper {...p}><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></IconWrapper>;
 const School = (p) => <IconWrapper {...p}><path d="m4 6 8-4 8 4"/><path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2"/><path d="M14 22v-4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v4"/><path d="M18 5v17"/><path d="M6 5v17"/></IconWrapper>;
+const Clock3 = (p) => <IconWrapper {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 4.5 9"/></IconWrapper>;
 
 // --- KONFIGURASI FIREBASE ---
 const firebaseConfig = {
@@ -231,12 +232,12 @@ const SEED_DATA = {
     }
   ],
   students: [
-    { id: "s1", name: 'Siswa Contoh', username: 'siswa', password: '123', class: 'XII-A' }
+    { id: "s1", name: 'Siswa Contoh', username: 'siswa', password: '123', class: 'XII-A', session: '1' }
   ],
   exams: [
     {
       id: "e1", title: 'Simulasi ANBK Lengkap', duration: 30,
-      questionIds: ["q1", "q2", "q3"], randomizeQuestions: false, randomizeOptions: false, isActive: true
+      questionIds: ["q1", "q2", "q3"], randomizeQuestions: false, randomizeOptions: false, isActive: true, allowedSessions: ['1']
     }
   ],
   admins: [
@@ -434,23 +435,54 @@ const QuestionEditor = ({ qForm, setQForm, onSave, onCancel }) => {
 // --- HISTORY VIEW ---
 const HistoryView = ({ results, exams, students }) => {
   const [filterExam, setFilterExam] = useState('all');
+  const [filterClass, setFilterClass] = useState('all');
+  const [sortConfig, setSortConfig] = useState({ key: 'timestamp', direction: 'desc' });
 
-  const sortedResults = [...results].sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+  // Ambil daftar kelas unik dari results (karena result menyimpan snapshot kelas siswa)
+  const uniqueClasses = ['all', ...new Set(results.map(r => r.studentClass || '-').filter(c => c !== '-'))].sort();
 
-  const filteredResults = filterExam === 'all' 
-    ? sortedResults 
-    : sortedResults.filter(r => r.examId === filterExam);
+  // 1. Filter
+  let processed = results;
+  if (filterExam !== 'all') processed = processed.filter(r => r.examId === filterExam);
+  if (filterClass !== 'all') processed = processed.filter(r => r.studentClass === filterClass);
 
-  const getExamTitle = (examId) => {
-    const ex = exams.find(e => e.id === examId);
-    return ex ? ex.title : 'Ujian Dihapus';
+  // 2. Sort
+  processed.sort((a, b) => {
+    let valA, valB;
+    if (sortConfig.key === 'score') {
+      valA = a.score || 0;
+      valB = b.score || 0;
+    } else if (sortConfig.key === 'timestamp') {
+      valA = new Date(a.timestamp || 0).getTime();
+      valB = new Date(b.timestamp || 0).getTime();
+    } else if (sortConfig.key === 'name') {
+      valA = (getStudentName(a) || '').toLowerCase();
+      valB = (getStudentName(b) || '').toLowerCase();
+    }
+    
+    if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const requestSort = (key) => {
+    let direction = 'desc'; // Default desc untuk nilai/waktu
+    if (sortConfig.key === key && sortConfig.direction === 'desc') {
+      direction = 'asc';
+    }
+    setSortConfig({ key, direction });
   };
 
-  const getStudentName = (res) => {
+  function getExamTitle(examId) {
+    const ex = exams.find(e => e.id === examId);
+    return ex ? ex.title : 'Ujian Dihapus';
+  }
+
+  function getStudentName(res) {
     if (res.studentName) return res.studentName;
     const st = students.find(s => s.id === res.studentId);
     return st ? st.name : 'Siswa Dihapus';
-  };
+  }
 
   const handleDeleteResult = async (id) => {
     if (confirm("Hapus data riwayat ini secara permanen?")) {
@@ -467,12 +499,16 @@ const HistoryView = ({ results, exams, students }) => {
             <h2 className="text-2xl font-bold">Riwayat Hasil</h2>
             <p className="text-gray-500 text-sm">Arsip semua pengerjaan siswa.</p>
          </div>
-         <div className="flex gap-2">
-            <select className="border p-2 rounded" value={filterExam} onChange={e => setFilterExam(e.target.value)}>
+         <div className="flex flex-wrap gap-2">
+            <select className="border p-2 rounded text-sm" value={filterClass} onChange={e => setFilterClass(e.target.value)}>
+               <option value="all">Semua Kelas</option>
+               {uniqueClasses.filter(c => c !== 'all').map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select className="border p-2 rounded text-sm" value={filterExam} onChange={e => setFilterExam(e.target.value)}>
                <option value="all">Semua Paket Ujian</option>
                {exams.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
             </select>
-            <button onClick={() => window.print()} className="flex items-center bg-gray-800 text-white px-4 py-2 rounded shadow-sm">
+            <button onClick={() => window.print()} className="flex items-center bg-gray-800 text-white px-4 py-2 rounded shadow-sm text-sm">
                 <Printer size={16} className="mr-2"/> Cetak
             </button>
          </div>
@@ -480,23 +516,31 @@ const HistoryView = ({ results, exams, students }) => {
 
        <div className="bg-white rounded-lg shadow overflow-hidden border print-card overflow-x-auto">
          <table className="w-full text-left text-sm min-w-[700px]">
-           <thead className="bg-gray-50 text-gray-700 font-bold border-b">
+           <thead className="bg-gray-50 text-gray-700 font-bold border-b select-none">
              <tr>
-               <th className="p-4">Waktu</th>
-               <th className="p-4">Siswa</th>
+               <th className="p-4 cursor-pointer hover:bg-gray-100" onClick={() => requestSort('timestamp')}>
+                   Waktu {sortConfig.key === 'timestamp' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+               </th>
+               <th className="p-4 cursor-pointer hover:bg-gray-100" onClick={() => requestSort('name')}>
+                   Siswa {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+               </th>
+               <th className="p-4">Kelas</th>
                <th className="p-4">Paket Ujian</th>
                <th className="p-4 text-center">Status</th>
-               <th className="p-4 text-center">Nilai</th>
+               <th className="p-4 text-center cursor-pointer hover:bg-gray-100" onClick={() => requestSort('score')}>
+                   Nilai {sortConfig.key === 'score' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+               </th>
                <th className="p-4 text-center no-print">Aksi</th>
              </tr>
            </thead>
            <tbody className="divide-y">
-             {filteredResults.map(res => (
+             {processed.map(res => (
                <tr key={res.id} className="hover:bg-gray-50">
                  <td className="p-4 text-gray-500">
                     {res.timestamp ? new Date(res.timestamp).toLocaleString() : '-'}
                  </td>
                  <td className="p-4 font-medium">{getStudentName(res)}</td>
+                 <td className="p-4">{res.studentClass || '-'}</td>
                  <td className="p-4"><span className="px-2 py-1 bg-gray-100 rounded text-xs border">{getExamTitle(res.examId)}</span></td>
                  <td className="p-4 text-center">
                     {res.status === 'finished' 
@@ -511,8 +555,8 @@ const HistoryView = ({ results, exams, students }) => {
                  </td>
                </tr>
              ))}
-             {filteredResults.length === 0 && (
-               <tr><td colSpan="6" className="p-8 text-center text-gray-400">Belum ada data riwayat.</td></tr>
+             {processed.length === 0 && (
+               <tr><td colSpan="7" className="p-8 text-center text-gray-400">Data tidak ditemukan.</td></tr>
              )}
            </tbody>
          </table>
@@ -523,8 +567,64 @@ const HistoryView = ({ results, exams, students }) => {
 
 const MonitoringView = ({ activeExam, results, students }) => {
     if (!activeExam) return <div className="p-10 text-center text-gray-500">Tidak ada ujian yang sedang aktif.</div>;
+    
+    const [filterClass, setFilterClass] = useState('all');
+    const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
+
     const date = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const currentResults = results.filter(r => r.examId === activeExam.id);
+
+    // Ambil kelas unik dari siswa
+    const uniqueClasses = ['all', ...new Set(students.map(s => s.class || '-').filter(c => c !== '-'))].sort();
+
+    // Gabungkan data siswa dan hasil untuk sorting/filtering
+    const monitoredData = students.map(s => {
+        const res = currentResults.find(r => r.studentId === s.id);
+        return {
+            ...s,
+            status: res ? res.status : 'not_started',
+            score: res && res.score !== undefined ? res.score : -1, // -1 agar bisa sort yg belum ada nilai
+            answeredCount: res ? res.answeredCount : 0,
+            resultId: res ? res.id : null
+        };
+    });
+
+    // 1. Filter
+    const filteredData = filterClass === 'all' 
+        ? monitoredData 
+        : monitoredData.filter(d => d.class === filterClass);
+
+    // 2. Sort
+    const sortedData = [...filteredData].sort((a, b) => {
+        let valA, valB;
+
+        if (sortConfig.key === 'name') {
+            valA = (a.name || '').toLowerCase();
+            valB = (b.name || '').toLowerCase();
+        } else if (sortConfig.key === 'status') {
+            // Urutan prioritas: finished > ongoing > not_started
+            const statusPriority = { 'finished': 3, 'ongoing': 2, 'not_started': 1 };
+            valA = statusPriority[a.status] || 0;
+            valB = statusPriority[b.status] || 0;
+        } else if (sortConfig.key === 'score') {
+            valA = a.score;
+            valB = b.score;
+        }
+
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    const requestSort = (key) => {
+        let direction = 'asc';
+        // Default desc untuk status dan nilai agar yg selesai/tinggi di atas
+        if ((key === 'status' || key === 'score') && sortConfig.key !== key) direction = 'desc';
+        else if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
+        else if (sortConfig.key === key && sortConfig.direction === 'desc') direction = 'asc';
+        
+        setSortConfig({ key, direction });
+    };
 
     const handleReset = async (resultId) => {
         if (window.confirm("Reset progres siswa ini?")) {
@@ -537,7 +637,13 @@ const MonitoringView = ({ activeExam, results, students }) => {
         <div className="print-header"><h1>LAPORAN HASIL UJIAN</h1><p>{activeExam.title}</p><p>Tanggal: {date}</p></div>
         <div className="flex justify-between items-center no-print">
            <div><h2 className="text-2xl font-bold">Pemantauan</h2><p className="text-gray-500">Ujian Aktif: <strong>{activeExam.title}</strong></p></div>
-           <button onClick={() => window.print()} className="flex items-center bg-gray-800 text-white px-4 py-2 rounded shadow-sm"><Printer size={16} className="mr-2"/> Cetak</button>
+           <div className="flex gap-2">
+               <select className="border p-2 rounded text-sm" value={filterClass} onChange={e => setFilterClass(e.target.value)}>
+                   <option value="all">Semua Kelas</option>
+                   {uniqueClasses.filter(c => c !== 'all').map(c => <option key={c} value={c}>{c}</option>)}
+               </select>
+               <button onClick={() => window.print()} className="flex items-center bg-gray-800 text-white px-4 py-2 rounded shadow-sm"><Printer size={16} className="mr-2"/> Cetak</button>
+           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print-container">
@@ -548,26 +654,37 @@ const MonitoringView = ({ activeExam, results, students }) => {
 
         <div className="bg-white rounded-lg shadow overflow-hidden border print-container print-card overflow-x-auto">
           <table className="w-full text-left text-sm min-w-[600px]">
-            <thead className="bg-gray-50 text-gray-700 font-bold border-b"><tr><th className="p-4">Nama Siswa</th><th className="p-4">Status</th><th className="p-4 w-1/3 no-print">Progres</th><th className="p-4 text-center">Nilai</th><th className="p-4 text-center no-print">Aksi</th></tr></thead>
+            <thead className="bg-gray-50 text-gray-700 font-bold border-b select-none">
+                <tr>
+                    <th className="p-4 cursor-pointer hover:bg-gray-100" onClick={() => requestSort('name')}>
+                        Nama Siswa {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    </th>
+                    <th className="p-4 cursor-pointer hover:bg-gray-100" onClick={() => requestSort('status')}>
+                        Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    </th>
+                    <th className="p-4 w-1/3 no-print">Progres</th>
+                    <th className="p-4 text-center cursor-pointer hover:bg-gray-100" onClick={() => requestSort('score')}>
+                        Nilai {sortConfig.key === 'score' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    </th>
+                    <th className="p-4 text-center no-print">Aksi</th>
+                </tr>
+            </thead>
             <tbody className="divide-y">
-              {students.map(s => {
-                const res = currentResults.find(r => r.studentId === s.id);
-                const status = res ? res.status : 'not_started';
+              {sortedData.map(s => {
                 const total = (activeExam.questionIds || []).length; 
-                const answered = res ? res.answeredCount : 0;
-                const percent = total > 0 ? (answered / total) * 100 : 0;
+                const percent = total > 0 ? (s.answeredCount / total) * 100 : 0;
                 
                 return (
                   <tr key={s.id} className="hover:bg-gray-50">
-                    <td className="p-4 font-medium">{s.name} <br/><span className="text-xs text-gray-400 no-print">{s.username} - {s.class || 'Tanpa Kelas'}</span></td>
+                    <td className="p-4 font-medium">{s.name} <br/><span className="text-xs text-gray-400 no-print">{s.username} - {s.class || 'Tanpa Kelas'} - <strong>Sesi {s.session || '1'}</strong></span></td>
                     <td className="p-4">
-                      {status === 'not_started' && <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Belum Login</span>}
-                      {status === 'ongoing' && <span className="px-2 py-1 bg-blue-100 text-blue-600 rounded text-xs">Mengerjakan...</span>}
-                      {status === 'finished' && <span className="px-2 py-1 bg-green-100 text-green-600 rounded text-xs font-bold">Selesai</span>}
+                      {s.status === 'not_started' && <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Belum Login</span>}
+                      {s.status === 'ongoing' && <span className="px-2 py-1 bg-blue-100 text-blue-600 rounded text-xs">Mengerjakan...</span>}
+                      {s.status === 'finished' && <span className="px-2 py-1 bg-green-100 text-green-600 rounded text-xs font-bold">Selesai</span>}
                     </td>
-                    <td className="p-4 no-print"><div className="flex items-center gap-2"><div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden border border-gray-300"><div className={`h-full rounded-full transition-all duration-500 ${status === 'finished' ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${percent}%` }}></div></div><span className="text-xs font-mono">{answered}/{total}</span></div></td>
-                    <td className="p-4 text-center">{status === 'finished' && res.score !== undefined ? <span className="font-bold text-lg text-gray-800">{res.score.toFixed(1)}</span> : <span className="text-gray-400">-</span>}</td>
-                    <td className="p-4 text-center no-print">{res && <button onClick={() => handleReset(res.id)} className="text-red-600 hover:bg-red-50 px-2 py-1 rounded text-xs border border-red-200">Reset</button>}</td>
+                    <td className="p-4 no-print"><div className="flex items-center gap-2"><div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden border border-gray-300"><div className={`h-full rounded-full transition-all duration-500 ${s.status === 'finished' ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${percent}%` }}></div></div><span className="text-xs font-mono">{s.answeredCount}/{total}</span></div></td>
+                    <td className="p-4 text-center">{s.status === 'finished' && s.score >= 0 ? <span className="font-bold text-lg text-gray-800">{s.score.toFixed(1)}</span> : <span className="text-gray-400">-</span>}</td>
+                    <td className="p-4 text-center no-print">{s.resultId && <button onClick={() => handleReset(s.resultId)} className="text-red-600 hover:bg-red-50 px-2 py-1 rounded text-xs border border-red-200">Reset</button>}</td>
                   </tr>
                 );
               })}
@@ -810,9 +927,9 @@ const AdminDashboard = ({
 
   const [isEditingQ, setIsEditingQ] = useState(false);
   const [qForm, setQForm] = useState(null);
-  const [examForm, setExamForm] = useState({ title: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false });
+  const [examForm, setExamForm] = useState({ title: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false, allowedSessions: ['1', '2', '3', '4'] });
   const [isEditingStudent, setIsEditingStudent] = useState(false);
-  const [studentForm, setStudentForm] = useState({ name: '', username: '', password: '', class: '' });
+  const [studentForm, setStudentForm] = useState({ name: '', username: '', password: '', class: '', session: '1' });
   
   // States untuk Sorting Peserta
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
@@ -871,7 +988,7 @@ const AdminDashboard = ({
   };
 
   const openExamForm = (e=null) => { 
-    setExamForm(e ? {...e} : { title: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false }); 
+    setExamForm(e ? {...e} : { title: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false, allowedSessions: ['1', '2', '3', '4'] }); 
     setExamView('form'); 
   };
   const handleSaveExam = async () => { 
@@ -892,6 +1009,10 @@ const AdminDashboard = ({
     } catch (e) { alert("Gagal update status: " + e.message); }
   };
   const toggleQuestionSelection = (qid) => { const s=examForm.questionIds; setExamForm({...examForm, questionIds: s.includes(qid)?s.filter(id=>id!==qid):[...s,qid]}); };
+  const toggleSession = (ses) => { 
+      const s = examForm.allowedSessions || []; 
+      setExamForm({...examForm, allowedSessions: s.includes(ses) ? s.filter(id=>id!==ses) : [...s, ses]}); 
+  };
 
   const handleSaveStudent = async () => {
     if(!studentForm.username) return alert("Username wajib diisi!");
@@ -917,14 +1038,15 @@ const AdminDashboard = ({
       let count = 0;
       lines.forEach((l,i) => {
         const p = l.trim().split(',');
-        // CSV Format: Name,Username,Password,Class
+        // CSV Format: Name,Username,Password,Class,Session
         if(p.length>=3 && (i>0 || p[1].toLowerCase()!=='username') && !students.some(s=>s.username===p[1])) {
           const newRef = doc(getCollectionRef('students'));
           batch.set(newRef, { 
             name: p[0], 
             username: p[1], 
             password: p[2],
-            class: p[3] ? p[3].trim() : '-' 
+            class: p[3] ? p[3].trim() : '-',
+            session: p[4] ? p[4].trim() : '1'
           });
           count++;
         }
@@ -1110,12 +1232,31 @@ const AdminDashboard = ({
         {activeTab === 'exams' && !isContributor && !isPrincipal && (examView === 'form' ? (
              <div className="bg-white p-6 rounded-lg shadow border">
                 <div className="flex justify-between items-center mb-6"><h3 className="text-xl font-bold">{examForm.id ? 'Edit' : 'Baru'} Paket Ujian</h3><button onClick={()=>setExamView('list')}><X/></button></div>
-                <div className="grid gap-4 mb-4">
-                   <input value={examForm.title} onChange={e=>setExamForm({...examForm, title:e.target.value})} className="border p-2 rounded w-full" placeholder="Nama Ujian"/>
-                   <input type="number" value={examForm.duration} onChange={e=>setExamForm({...examForm, duration:parseInt(e.target.value)})} className="border p-2 rounded w-full" placeholder="Durasi (menit)"/>
-                   <div className="flex gap-4">
-                     <label className="flex items-center"><input type="checkbox" checked={examForm.randomizeQuestions} onChange={e=>setExamForm({...examForm, randomizeQuestions:e.target.checked})} className="mr-2"/> Acak Soal</label>
-                     <label className="flex items-center"><input type="checkbox" checked={examForm.randomizeOptions} onChange={e=>setExamForm({...examForm, randomizeOptions:e.target.checked})} className="mr-2"/> Acak Opsi</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                   <div className="space-y-4">
+                       <input value={examForm.title} onChange={e=>setExamForm({...examForm, title:e.target.value})} className="border p-2 rounded w-full" placeholder="Nama Ujian"/>
+                       <input type="number" value={examForm.duration} onChange={e=>setExamForm({...examForm, duration:parseInt(e.target.value)})} className="border p-2 rounded w-full" placeholder="Durasi (menit)"/>
+                       <div className="flex gap-4">
+                         <label className="flex items-center"><input type="checkbox" checked={examForm.randomizeQuestions} onChange={e=>setExamForm({...examForm, randomizeQuestions:e.target.checked})} className="mr-2"/> Acak Soal</label>
+                         <label className="flex items-center"><input type="checkbox" checked={examForm.randomizeOptions} onChange={e=>setExamForm({...examForm, randomizeOptions:e.target.checked})} className="mr-2"/> Acak Opsi</label>
+                       </div>
+                   </div>
+                   <div className="bg-gray-50 p-4 rounded border">
+                       <h4 className="font-bold text-sm mb-3 text-gray-600">Sesi yang Diizinkan:</h4>
+                       <div className="flex gap-4 flex-wrap">
+                          {['1', '2', '3', '4'].map(ses => (
+                              <label key={ses} className="flex items-center bg-white border px-3 py-2 rounded cursor-pointer hover:bg-gray-50">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={(examForm.allowedSessions || []).includes(ses)} 
+                                    onChange={() => toggleSession(ses)}
+                                    className="mr-2 w-4 h-4 accent-blue-600"
+                                  />
+                                  Sesi {ses}
+                              </label>
+                          ))}
+                       </div>
+                       <p className="text-xs text-gray-400 mt-2">Hanya siswa dengan sesi yang dicentang yang bisa masuk ujian ini.</p>
                    </div>
                 </div>
                 <div className="border-t pt-4">
@@ -1137,7 +1278,7 @@ const AdminDashboard = ({
           ) : (
             <>
               <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold">Daftar Paket</h2><button onClick={() => openExamForm()} className="bg-green-600 text-white px-4 py-2 rounded flex items-center"><Plus size={18} className="mr-2"/> Buat Baru</button></div>
-              <div className="grid gap-4">{exams.map((exam) => {const isActive = exam.isActive; return (<div key={exam.id} className={`bg-white p-6 rounded-lg border-2 ${isActive ? 'border-green-500 shadow-md' : 'border-gray-100'}`}><div className="flex justify-between items-start"><div><h3 className="font-bold text-lg">{exam.title}</h3>{isActive && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold">AKTIF</span>}<p className="text-sm text-gray-500 mt-1">{exam.duration} Menit • {exam.questionIds.length} Soal</p></div><div className="flex gap-2"><button onClick={() => toggleExamStatus(exam)} className={`px-3 py-1 rounded text-sm font-bold flex items-center ${isActive ? 'bg-red-100 text-red-700' : 'bg-gray-100 hover:bg-green-100 text-gray-700 hover:text-green-700'}`}>{isActive ? <><StopCircle size={14} className="mr-1"/> Stop</> : <><PlayCircle size={14} className="mr-1"/> Mulai</>}</button><button onClick={()=>openExamForm(exam)} className="p-2 text-blue-500"><Edit size={16}/></button><button onClick={()=>handleDeleteExam(exam.id)} className="p-2 text-red-500"><Trash2 size={16}/></button></div></div></div>);})}</div>
+              <div className="grid gap-4">{exams.map((exam) => {const isActive = exam.isActive; return (<div key={exam.id} className={`bg-white p-6 rounded-lg border-2 ${isActive ? 'border-green-500 shadow-md' : 'border-gray-100'}`}><div className="flex justify-between items-start"><div><h3 className="font-bold text-lg">{exam.title}</h3>{isActive && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold">AKTIF</span>}<p className="text-sm text-gray-500 mt-1">{exam.duration} Menit • {exam.questionIds.length} Soal • Sesi: {(exam.allowedSessions || []).join(', ')}</p></div><div className="flex gap-2"><button onClick={() => toggleExamStatus(exam)} className={`px-3 py-1 rounded text-sm font-bold flex items-center ${isActive ? 'bg-red-100 text-red-700' : 'bg-gray-100 hover:bg-green-100 text-gray-700 hover:text-green-700'}`}>{isActive ? <><StopCircle size={14} className="mr-1"/> Stop</> : <><PlayCircle size={14} className="mr-1"/> Mulai</>}</button><button onClick={()=>openExamForm(exam)} className="p-2 text-blue-500"><Edit size={16}/></button><button onClick={()=>handleDeleteExam(exam.id)} className="p-2 text-red-500"><Trash2 size={16}/></button></div></div></div>);})}</div>
             </>
         ))}
         {activeTab === 'students' && !isContributor && !isPrincipal && (isEditingStudent ? (
@@ -1145,7 +1286,15 @@ const AdminDashboard = ({
                <h3 className="font-bold mb-4">{studentForm.id ? 'Edit' : 'Tambah'} Siswa</h3>
                <div className="space-y-3">
                  <input value={studentForm.name} onChange={e=>setStudentForm({...studentForm, name:e.target.value})} className="border p-2 w-full rounded" placeholder="Nama"/>
-                 <input value={studentForm.class || ''} onChange={e=>setStudentForm({...studentForm, class:e.target.value})} className="border p-2 w-full rounded" placeholder="Kelas"/>
+                 <div className="flex gap-2">
+                    <input value={studentForm.class || ''} onChange={e=>setStudentForm({...studentForm, class:e.target.value})} className="border p-2 w-full rounded" placeholder="Kelas"/>
+                    <select value={studentForm.session || '1'} onChange={e=>setStudentForm({...studentForm, session:e.target.value})} className="border p-2 rounded w-1/3">
+                        <option value="1">Sesi 1</option>
+                        <option value="2">Sesi 2</option>
+                        <option value="3">Sesi 3</option>
+                        <option value="4">Sesi 4</option>
+                    </select>
+                 </div>
                  <input value={studentForm.username} onChange={e=>setStudentForm({...studentForm, username:e.target.value})} className="border p-2 w-full rounded" placeholder="Username"/>
                  <input value={studentForm.password} onChange={e=>setStudentForm({...studentForm, password:e.target.value})} className="border p-2 w-full rounded" placeholder="Password"/>
                </div>
@@ -1158,7 +1307,7 @@ const AdminDashboard = ({
                 <div className="flex gap-2">
                   <input type="file" accept=".csv" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
                   <button onClick={handleImportClick} className="bg-green-600 text-white px-3 py-2 rounded flex items-center text-sm"><Upload size={16} className="mr-2"/> Impor CSV</button>
-                  <button onClick={()=> {setStudentForm({name:'', username:'', password:'', class: ''}); setIsEditingStudent(true);}} className="bg-blue-600 text-white px-3 py-2 rounded flex items-center text-sm"><Plus size={16} className="mr-2"/> Tambah</button>
+                  <button onClick={()=> {setStudentForm({name:'', username:'', password:'', class: '', session: '1'}); setIsEditingStudent(true);}} className="bg-blue-600 text-white px-3 py-2 rounded flex items-center text-sm"><Plus size={16} className="mr-2"/> Tambah</button>
                 </div>
               </div>
               <div className="bg-white shadow rounded-lg overflow-hidden border overflow-x-auto">
@@ -1171,6 +1320,7 @@ const AdminDashboard = ({
                       <th className="p-4 cursor-pointer hover:bg-gray-100" onClick={() => requestSort('class')}>
                         Kelas {sortConfig.key === 'class' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                       </th>
+                      <th className="p-4">Sesi</th>
                       <th className="p-4">Username</th>
                       <th className="p-4 text-center">Aksi</th>
                     </tr>
@@ -1180,6 +1330,7 @@ const AdminDashboard = ({
                       <tr key={s.id} className="hover:bg-gray-50">
                         <td className="p-4">{s.name}</td>
                         <td className="p-4"><span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded border">{s.class || '-'}</span></td>
+                        <td className="p-4"><span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded">Sesi {s.session || '1'}</span></td>
                         <td className="p-4 font-mono text-gray-600">{s.username}</td>
                         <td className="p-4 text-center space-x-2">
                           <button onClick={() => {setStudentForm({...s}); setIsEditingStudent(true);}} className="text-blue-600"><Edit size={16}/></button>
@@ -1282,8 +1433,22 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
   const [examFinished, setExamFinished] = useState(false);
   const [score, setScore] = useState(0);
   const [resultId, setResultId] = useState(null); // State untuk ID unik sesi ini
-  
+  const [sessionError, setSessionError] = useState(null); // State untuk error sesi
+
   useEffect(() => {
+    if(!activeExam) return;
+
+    // VALIDASI SESI SEBELUM MEMULAI
+    // Jika allowedSessions ada dan sesi siswa tidak ada di dalamnya -> Blokir
+    const allowed = activeExam.allowedSessions || []; // Default array kosong
+    const userSession = currentUser.session || '1'; // Default sesi 1 jika tidak ada
+
+    // Jika allowedSessions tidak kosong (artinya ada pembatasan), cek apakah userSession termasuk
+    if (allowed.length > 0 && !allowed.includes(userSession)) {
+        setSessionError(`Maaf, Ujian ini hanya untuk Sesi ${allowed.join(', ')}. Anda terdaftar di Sesi ${userSession}.`);
+        return; 
+    }
+
     // Pastikan questions sudah dimuat sebelum inisialisasi
     if (activeExam && questions.length > 0) {
       let qList = questions.filter(q => activeExam.questionIds.includes(q.id));
@@ -1330,7 +1495,7 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
 
       setResultId(currentSessionId);
     }
-  }, [activeExam?.id, questions, currentUser.id]);
+  }, [activeExam?.id, questions, currentUser]);
 
   useEffect(() => {
     if (timeLeft > 0 && !examFinished) {
@@ -1360,15 +1525,20 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
 
       // Logika Penilaian
       if (q.type === 'single') {
-         if (userAns && userAns.length > 0 && originalQuestion.correctAnswer.includes(userAns[0])) {
+         // Pastikan correctAnswer ada dan berupa array
+         const correct = originalQuestion.correctAnswer || [];
+         if (userAns && userAns.length > 0 && correct.includes(userAns[0])) {
            totalScore += 1;
          }
       } 
       else if (q.type === 'multiple') {
          // Strict Scoring: Harus sama persis
          const u = (userAns || []).sort();
-         const c = [...originalQuestion.correctAnswer].sort();
-         if (JSON.stringify(u) === JSON.stringify(c)) totalScore += 1;
+         const c = [...(originalQuestion.correctAnswer || [])].sort();
+         
+         // PERBAIKAN: Tambahkan pengecekan c.length > 0
+         // Jika admin lupa set kunci jawaban (array kosong), jangan beri nilai meskipun siswa tidak menjawab (array kosong)
+         if (c.length > 0 && JSON.stringify(u) === JSON.stringify(c)) totalScore += 1;
       }
       else if (q.type === 'true_false') {
          // UBAH: Strict Scoring (Mutlak)
@@ -1433,6 +1603,28 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
   };
 
   if (!activeExam) return (<div className="h-screen flex flex-col items-center justify-center bg-gray-50"><div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md"><div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"><StopCircle size={32} /></div><h2 className="text-xl font-bold text-gray-800">Tidak Ada Ujian Aktif</h2><p className="text-gray-500 mb-6">Halo, {currentUser.name}. Saat ini belum ada ujian yang aktif.</p><button onClick={handleLogoutWrapper} className="px-6 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg transition">Keluar</button></div></div>);
+  
+  // TAMPILAN ERROR SESI
+  if (sessionError) {
+      return (
+        <div className="h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
+            <div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md w-full border-t-4 border-yellow-500">
+                <div className="w-16 h-16 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Clock3 size={32} />
+                </div>
+                <h2 className="text-xl font-bold text-gray-800 mb-2">Akses Dibatasi</h2>
+                <p className="text-gray-600 mb-6">{sessionError}</p>
+                <div className="text-xs text-gray-400 mb-6 bg-gray-100 p-3 rounded">
+                    Silakan hubungi proktor jika Anda merasa ini adalah kesalahan.
+                </div>
+                <button onClick={handleLogoutWrapper} className="w-full px-6 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg transition font-medium">
+                    Kembali ke Login
+                </button>
+            </div>
+        </div>
+      );
+  }
+
   if (processedQuestions.length === 0) return <div className="h-screen flex items-center justify-center">Loading ujian...</div>;
 
   if (examFinished) {
@@ -1456,7 +1648,7 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
     // Gunakan h-[100dvh] untuk mobile browser (address bar issue)
     <div className="flex flex-col h-screen h-[100dvh] bg-gray-100 font-sans text-gray-800 overflow-hidden">
       <header className="bg-[#2d3748] text-white h-16 flex items-center justify-between px-4 shadow z-20 shrink-0">
-        <div className="flex items-center space-x-4"><div className="bg-blue-600 w-10 h-10 rounded flex items-center justify-center font-bold text-xl">A</div><div><h1 className="font-semibold text-lg">{activeExam.title}</h1><p className="text-xs text-gray-400">Peserta: {currentUser.name} ({currentUser.class || '-'})</p></div></div>
+        <div className="flex items-center space-x-4"><div className="bg-blue-600 w-10 h-10 rounded flex items-center justify-center font-bold text-xl">A</div><div><h1 className="font-semibold text-lg">{activeExam.title}</h1><p className="text-xs text-gray-400">Peserta: {currentUser.name} ({currentUser.class || '-'}) - Sesi {currentUser.session || '1'}</p></div></div>
         <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center bg-gray-700 px-3 py-1.5 rounded-full border border-gray-600 font-mono"><Clock className="w-4 h-4 mr-2 text-yellow-400" />{Math.floor(timeLeft/60).toString().padStart(2,'0')}:{(timeLeft%60).toString().padStart(2,'0')}</div>
             {/* Tombol Menu Mobile */}
