@@ -59,6 +59,7 @@ const UsersCog = (p) => <IconWrapper {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4
 const ArrowUpDown = (p) => <IconWrapper {...p}><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></IconWrapper>;
 const School = (p) => <IconWrapper {...p}><path d="m4 6 8-4 8 4"/><path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2"/><path d="M14 22v-4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v4"/><path d="M18 5v17"/><path d="M6 5v17"/></IconWrapper>;
 const Clock3 = (p) => <IconWrapper {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 4.5 9"/></IconWrapper>;
+const StopHand = (p) => <IconWrapper {...p}><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></IconWrapper>;
 
 // --- KONFIGURASI FIREBASE ---
 const firebaseConfig = {
@@ -237,7 +238,7 @@ const SEED_DATA = {
   exams: [
     {
       id: "e1", title: 'Simulasi ANBK Lengkap', duration: 30,
-      questionIds: ["q1", "q2", "q3"], randomizeQuestions: false, randomizeOptions: false, isActive: true, allowedSessions: ['1']
+      questionIds: ["q1", "q2", "q3"], randomizeQuestions: false, randomizeOptions: false, isActive: true, allowedSessions: ['1'], maxAttempts: 1
     }
   ],
   admins: [
@@ -927,7 +928,7 @@ const AdminDashboard = ({
 
   const [isEditingQ, setIsEditingQ] = useState(false);
   const [qForm, setQForm] = useState(null);
-  const [examForm, setExamForm] = useState({ title: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false, allowedSessions: ['1', '2', '3', '4'] });
+  const [examForm, setExamForm] = useState({ title: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false, allowedSessions: ['1', '2', '3', '4'], maxAttempts: 1 });
   const [isEditingStudent, setIsEditingStudent] = useState(false);
   const [studentForm, setStudentForm] = useState({ name: '', username: '', password: '', class: '', session: '1' });
   
@@ -988,7 +989,7 @@ const AdminDashboard = ({
   };
 
   const openExamForm = (e=null) => { 
-    setExamForm(e ? {...e} : { title: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false, allowedSessions: ['1', '2', '3', '4'] }); 
+    setExamForm(e ? {...e} : { title: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false, allowedSessions: ['1', '2', '3', '4'], maxAttempts: 1 }); 
     setExamView('form'); 
   };
   const handleSaveExam = async () => { 
@@ -1240,6 +1241,11 @@ const AdminDashboard = ({
                          <label className="flex items-center"><input type="checkbox" checked={examForm.randomizeQuestions} onChange={e=>setExamForm({...examForm, randomizeQuestions:e.target.checked})} className="mr-2"/> Acak Soal</label>
                          <label className="flex items-center"><input type="checkbox" checked={examForm.randomizeOptions} onChange={e=>setExamForm({...examForm, randomizeOptions:e.target.checked})} className="mr-2"/> Acak Opsi</label>
                        </div>
+                       <div>
+                           <label className="block text-sm font-medium text-gray-700 mb-1">Batasan Mengerjakan (Kali)</label>
+                           <input type="number" min="1" value={examForm.maxAttempts || 1} onChange={e=>setExamForm({...examForm, maxAttempts:parseInt(e.target.value)})} className="border p-2 rounded w-full" placeholder="Contoh: 1"/>
+                           <p className="text-xs text-gray-400 mt-1">Siswa hanya dapat mengerjakan ujian sebanyak jumlah ini.</p>
+                       </div>
                    </div>
                    <div className="bg-gray-50 p-4 rounded border">
                        <h4 className="font-bold text-sm mb-3 text-gray-600">Sesi yang Diizinkan:</h4>
@@ -1278,7 +1284,7 @@ const AdminDashboard = ({
           ) : (
             <>
               <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold">Daftar Paket</h2><button onClick={() => openExamForm()} className="bg-green-600 text-white px-4 py-2 rounded flex items-center"><Plus size={18} className="mr-2"/> Buat Baru</button></div>
-              <div className="grid gap-4">{exams.map((exam) => {const isActive = exam.isActive; return (<div key={exam.id} className={`bg-white p-6 rounded-lg border-2 ${isActive ? 'border-green-500 shadow-md' : 'border-gray-100'}`}><div className="flex justify-between items-start"><div><h3 className="font-bold text-lg">{exam.title}</h3>{isActive && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold">AKTIF</span>}<p className="text-sm text-gray-500 mt-1">{exam.duration} Menit • {exam.questionIds.length} Soal • Sesi: {(exam.allowedSessions || []).join(', ')}</p></div><div className="flex gap-2"><button onClick={() => toggleExamStatus(exam)} className={`px-3 py-1 rounded text-sm font-bold flex items-center ${isActive ? 'bg-red-100 text-red-700' : 'bg-gray-100 hover:bg-green-100 text-gray-700 hover:text-green-700'}`}>{isActive ? <><StopCircle size={14} className="mr-1"/> Stop</> : <><PlayCircle size={14} className="mr-1"/> Mulai</>}</button><button onClick={()=>openExamForm(exam)} className="p-2 text-blue-500"><Edit size={16}/></button><button onClick={()=>handleDeleteExam(exam.id)} className="p-2 text-red-500"><Trash2 size={16}/></button></div></div></div>);})}</div>
+              <div className="grid gap-4">{exams.map((exam) => {const isActive = exam.isActive; return (<div key={exam.id} className={`bg-white p-6 rounded-lg border-2 ${isActive ? 'border-green-500 shadow-md' : 'border-gray-100'}`}><div className="flex justify-between items-start"><div><h3 className="font-bold text-lg">{exam.title}</h3>{isActive && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold">AKTIF</span>}<p className="text-sm text-gray-500 mt-1">{exam.duration} Menit • {exam.questionIds.length} Soal • Sesi: {(exam.allowedSessions || []).join(', ')} • Max: {exam.maxAttempts || 1}x</p></div><div className="flex gap-2"><button onClick={() => toggleExamStatus(exam)} className={`px-3 py-1 rounded text-sm font-bold flex items-center ${isActive ? 'bg-red-100 text-red-700' : 'bg-gray-100 hover:bg-green-100 text-gray-700 hover:text-green-700'}`}>{isActive ? <><StopCircle size={14} className="mr-1"/> Stop</> : <><PlayCircle size={14} className="mr-1"/> Mulai</>}</button><button onClick={()=>openExamForm(exam)} className="p-2 text-blue-500"><Edit size={16}/></button><button onClick={()=>handleDeleteExam(exam.id)} className="p-2 text-red-500"><Trash2 size={16}/></button></div></div></div>);})}</div>
             </>
         ))}
         {activeTab === 'students' && !isContributor && !isPrincipal && (isEditingStudent ? (
@@ -1423,7 +1429,7 @@ const AdminDashboard = ({
 };
 
 // --- SISWA ---
-const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
+const StudentExam = ({ questions, activeExam, currentUser, onLogout, results }) => {
   const [processedQuestions, setProcessedQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -1434,16 +1440,37 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
   const [score, setScore] = useState(0);
   const [resultId, setResultId] = useState(null); // State untuk ID unik sesi ini
   const [sessionError, setSessionError] = useState(null); // State untuk error sesi
+  const [attemptError, setAttemptError] = useState(null); // State untuk error attempt
 
+  // EFFECT 1: Check Attempts (Run once or when activeExam changes)
   useEffect(() => {
-    if(!activeExam) return;
+    if (!activeExam || !currentUser || !results) return;
+
+    // Hitung berapa kali siswa ini SUDAH menyelesaikan ujian ini (status: finished)
+    // Kita filter hanya yang 'finished'. Yang 'ongoing' tidak dihitung sebagai penggunaan 'jatah' 
+    // sampai mereka menyelesaikannya.
+    const maxAttempts = parseInt(activeExam.maxAttempts || 1);
+    const myFinishedResults = results.filter(r => 
+        r.examId === activeExam.id && 
+        r.studentId === currentUser.id && 
+        r.status === 'finished'
+    );
+
+    if (myFinishedResults.length >= maxAttempts) {
+        setAttemptError(`Anda sudah menggunakan kesempatan mengerjakan sebanyak ${myFinishedResults.length} dari ${maxAttempts} kali.`);
+    } else {
+        setAttemptError(null);
+    }
+  }, [activeExam?.id, currentUser?.id, results.length]); // Dependensi minimal agar tidak render berulang saat typing
+
+  // EFFECT 2: Initialization (Only run if no error)
+  useEffect(() => {
+    if(!activeExam || sessionError || attemptError) return;
 
     // VALIDASI SESI SEBELUM MEMULAI
-    // Jika allowedSessions ada dan sesi siswa tidak ada di dalamnya -> Blokir
-    const allowed = activeExam.allowedSessions || []; // Default array kosong
-    const userSession = currentUser.session || '1'; // Default sesi 1 jika tidak ada
+    const allowed = activeExam.allowedSessions || []; 
+    const userSession = currentUser.session || '1'; 
 
-    // Jika allowedSessions tidak kosong (artinya ada pembatasan), cek apakah userSession termasuk
     if (allowed.length > 0 && !allowed.includes(userSession)) {
         setSessionError(`Maaf, Ujian ini hanya untuk Sesi ${allowed.join(', ')}. Anda terdaftar di Sesi ${userSession}.`);
         return; 
@@ -1451,6 +1478,10 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
 
     // Pastikan questions sudah dimuat sebelum inisialisasi
     if (activeExam && questions.length > 0) {
+      // Cek apakah data pertanyaan sudah ada di state lokal untuk mencegah re-shuffle saat re-render
+      // Kita gunakan processedQuestions.length sebagai flag sederhana
+      if (processedQuestions.length > 0) return;
+
       let qList = questions.filter(q => activeExam.questionIds.includes(q.id));
       if (activeExam.randomizeQuestions) qList = shuffleArray(qList);
       
@@ -1467,16 +1498,13 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
       setTimeLeft(activeExam.duration * 60);
       
       // LOGIKA BARU: Generate ID Unik per Sesi
-      // Cek apakah ada sesi yang tersimpan di sessionStorage (untuk handle refresh)
       const sessionKey = `exam_session_${currentUser.id}_${activeExam.id}`;
       let currentSessionId = sessionStorage.getItem(sessionKey);
 
-      // Jika tidak ada sesi aktif di storage, buat ID baru (timestamp based)
       if (!currentSessionId) {
         currentSessionId = `${activeExam.id}_${currentUser.id}_${Date.now()}`;
         sessionStorage.setItem(sessionKey, currentSessionId);
 
-        // Inisialisasi dokumen hasil baru di Firestore
         const resultData = {
           examId: activeExam.id,
           studentId: currentUser.id,
@@ -1495,7 +1523,7 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
 
       setResultId(currentSessionId);
     }
-  }, [activeExam?.id, questions, currentUser]);
+  }, [activeExam?.id, questions, currentUser, sessionError, attemptError]); // processedQuestions logic handles re-entry
 
   useEffect(() => {
     if (timeLeft > 0 && !examFinished) {
@@ -1507,7 +1535,6 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
   }, [timeLeft, examFinished, activeExam, processedQuestions.length]);
 
   const handleLogoutWrapper = () => {
-    // Bersihkan sesi saat logout manual
     if (activeExam && currentUser) {
         sessionStorage.removeItem(`exam_session_${currentUser.id}_${activeExam.id}`);
     }
@@ -1523,29 +1550,20 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
       const originalQuestion = questions.find(oq => oq.id === q.id); 
       if (!originalQuestion) return;
 
-      // Logika Penilaian
       if (q.type === 'single') {
-         // Pastikan correctAnswer ada dan berupa array
          const correct = originalQuestion.correctAnswer || [];
          if (userAns && userAns.length > 0 && correct.includes(userAns[0])) {
            totalScore += 1;
          }
       } 
       else if (q.type === 'multiple') {
-         // Strict Scoring: Harus sama persis
          const u = (userAns || []).sort();
          const c = [...(originalQuestion.correctAnswer || [])].sort();
-         
-         // PERBAIKAN: Tambahkan pengecekan c.length > 0
-         // Jika admin lupa set kunci jawaban (array kosong), jangan beri nilai meskipun siswa tidak menjawab (array kosong)
          if (c.length > 0 && JSON.stringify(u) === JSON.stringify(c)) totalScore += 1;
       }
       else if (q.type === 'true_false') {
-         // UBAH: Strict Scoring (Mutlak)
          const statements = originalQuestion.trueFalseStatements || [];
          const isAllCorrect = statements.every(st => {
-             // userAns[st.id] harus sama dengan st.correct
-             // Pastikan userAns ada
              return userAns && userAns[st.id] === st.correct;
          });
          
@@ -1559,7 +1577,6 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
     setScore(finalScore);
     setExamFinished(true);
     
-    // Hapus sesi lokal agar percobaan berikutnya membuat ID baru
     sessionStorage.removeItem(`exam_session_${currentUser.id}_${activeExam.id}`);
 
     if (document.fullscreenElement && document.exitFullscreen) {
@@ -1567,7 +1584,6 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
     }
     
     try {
-        // Gunakan resultId yang unik
         await setDoc(getDocRef('results', resultId), {
             status: 'finished',
             score: finalScore,
@@ -1588,7 +1604,6 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
         const c = curr || [];
         next = c.includes(value) ? c.filter(id=>id!==value) : [...c, value];
     } else if (type === 'true_false') {
-        // value is boolean (true/false), subId is statement ID
         next = { ...(curr || {}), [subId]: value };
     }
     
@@ -1604,6 +1619,27 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout }) => {
 
   if (!activeExam) return (<div className="h-screen flex flex-col items-center justify-center bg-gray-50"><div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md"><div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"><StopCircle size={32} /></div><h2 className="text-xl font-bold text-gray-800">Tidak Ada Ujian Aktif</h2><p className="text-gray-500 mb-6">Halo, {currentUser.name}. Saat ini belum ada ujian yang aktif.</p><button onClick={handleLogoutWrapper} className="px-6 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg transition">Keluar</button></div></div>);
   
+  // TAMPILAN ERROR ATTEMPT
+  if (attemptError) {
+      return (
+        <div className="h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
+            <div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md w-full border-t-4 border-red-500">
+                <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <StopHand size={32} />
+                </div>
+                <h2 className="text-xl font-bold text-gray-800 mb-2">Batas Mengerjakan Habis</h2>
+                <p className="text-gray-600 mb-6">{attemptError}</p>
+                <div className="text-xs text-gray-400 mb-6 bg-gray-100 p-3 rounded">
+                    Anda tidak diizinkan mengulang ujian ini lagi.
+                </div>
+                <button onClick={handleLogoutWrapper} className="w-full px-6 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg transition font-medium">
+                    Kembali ke Login
+                </button>
+            </div>
+        </div>
+      );
+  }
+
   // TAMPILAN ERROR SESI
   if (sessionError) {
       return (
@@ -1847,5 +1883,6 @@ export default function App() {
     activeExam={activeExam}
     currentUser={user}
     onLogout={() => setUser(null)}
+    results={results}
   />;
 }
