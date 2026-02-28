@@ -60,6 +60,7 @@ const ArrowUpDown = (p) => <IconWrapper {...p}><path d="m7 15 5 5 5-5"/><path d=
 const School = (p) => <IconWrapper {...p}><path d="m4 6 8-4 8 4"/><path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2"/><path d="M14 22v-4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v4"/><path d="M18 5v17"/><path d="M6 5v17"/></IconWrapper>;
 const Clock3 = (p) => <IconWrapper {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 4.5 9"/></IconWrapper>;
 const StopHand = (p) => <IconWrapper {...p}><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></IconWrapper>;
+const Building = (p) => <IconWrapper {...p}><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></IconWrapper>;
 
 // --- KONFIGURASI FIREBASE ---
 const firebaseConfig = {
@@ -103,8 +104,10 @@ const PrintStyles = () => (
       .print-header { display: block !important; text-align: center; margin-bottom: 20px; border-bottom: 2px solid black; padding-bottom: 10px; }
       .print-header h1 { font-size: 24px; font-weight: bold; margin: 0; }
       .print-header p { margin: 5px 0 0; font-size: 14px; }
+      .print-footer { display: block !important; margin-top: 40px; page-break-inside: avoid; }
     }
     .print-header { display: none; }
+    .print-footer { display: none; }
   `}</style>
 );
 
@@ -237,7 +240,7 @@ const SEED_DATA = {
   ],
   exams: [
     {
-      id: "e1", title: 'Simulasi ANBK Lengkap', duration: 30,
+      id: "e1", title: 'Simulasi ANBK Lengkap', examCode: 'SIMULASI1', duration: 30,
       questionIds: ["q1", "q2", "q3"], randomizeQuestions: false, randomizeOptions: false, isActive: true, allowedSessions: ['1'], maxAttempts: 1
     }
   ],
@@ -434,7 +437,7 @@ const QuestionEditor = ({ qForm, setQForm, onSave, onCancel }) => {
 };
 
 // --- HISTORY VIEW ---
-const HistoryView = ({ results, exams, students }) => {
+const HistoryView = ({ results, exams, students, identity }) => {
   const [filterExam, setFilterExam] = useState('all');
   const [filterClass, setFilterClass] = useState('all');
   const [sortConfig, setSortConfig] = useState({ key: 'timestamp', direction: 'desc' });
@@ -476,7 +479,7 @@ const HistoryView = ({ results, exams, students }) => {
 
   function getExamTitle(examId) {
     const ex = exams.find(e => e.id === examId);
-    return ex ? ex.title : 'Ujian Dihapus';
+    return ex ? `${ex.title} (${ex.examCode || '-'})` : 'Ujian Dihapus';
   }
 
   function getStudentName(res) {
@@ -493,7 +496,12 @@ const HistoryView = ({ results, exams, students }) => {
 
   return (
     <div className="space-y-6 print-container">
-       <div className="print-header"><h1>RIWAYAT HASIL UJIAN</h1><p>Dicetak pada: {new Date().toLocaleDateString()}</p></div>
+       <div className="print-header">
+           <h1 className="uppercase tracking-widest">{identity?.namaSekolah || 'NAMA SEKOLAH'}</h1>
+           <p className="text-sm border-b-2 border-black pb-2 mb-2">{identity?.alamat || 'Alamat Sekolah'} | Tahun Pelajaran {identity?.tahunPelajaran || '-'} - {identity?.semester || '-'}</p>
+           <h2 className="text-xl font-bold mt-4">RIWAYAT HASIL UJIAN</h2>
+           <p>Dicetak pada: {new Date().toLocaleDateString('id-ID')}</p>
+       </div>
        
        <div className="flex flex-col md:flex-row justify-between items-center no-print gap-4">
          <div>
@@ -562,17 +570,45 @@ const HistoryView = ({ results, exams, students }) => {
            </tbody>
          </table>
        </div>
+
+       <div className="print-footer w-full pt-8">
+         <div className="float-right text-center w-64">
+            <p>....................., {new Date().toLocaleDateString('id-ID')}</p>
+            <p>Kepala Sekolah</p>
+            <br/><br/><br/><br/>
+            <p className="font-bold underline">{identity?.kepalaSekolah || '________________________'}</p>
+            <p>NIP. {identity?.nip || '_________________'}</p>
+         </div>
+         <div className="clear-both"></div>
+       </div>
     </div>
   );
 };
 
-const MonitoringView = ({ activeExam, results, students }) => {
-    if (!activeExam) return <div className="p-10 text-center text-gray-500">Tidak ada ujian yang sedang aktif.</div>;
-    
+const MonitoringView = ({ exams, results, students, identity }) => {
+    const activeExams = exams.filter(e => e.isActive);
+    const [selectedExamId, setSelectedExamId] = useState('');
+
+    useEffect(() => {
+        if (activeExams.length > 0 && !selectedExamId) {
+            setSelectedExamId(activeExams[0].id);
+        } else if (activeExams.length > 0 && selectedExamId) {
+            // Pastikan yang terpilih masih aktif
+            if (!activeExams.find(e => e.id === selectedExamId)) {
+                setSelectedExamId(activeExams[0].id);
+            }
+        }
+    }, [activeExams, selectedExamId]);
+
+    const activeExam = exams.find(e => e.id === selectedExamId);
+
     const [filterClass, setFilterClass] = useState('all');
     const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
-
     const date = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    if (activeExams.length === 0) return <div className="p-10 text-center text-gray-500">Tidak ada ujian yang sedang aktif.</div>;
+    if (!activeExam) return null;
+
     const currentResults = results.filter(r => r.examId === activeExam.id);
 
     // Ambil kelas unik dari siswa
@@ -635,9 +671,23 @@ const MonitoringView = ({ activeExam, results, students }) => {
 
     return (
       <div className="space-y-6 print-container">
-        <div className="print-header"><h1>LAPORAN HASIL UJIAN</h1><p>{activeExam.title}</p><p>Tanggal: {date}</p></div>
+        <div className="print-header">
+            <h1 className="uppercase tracking-widest">{identity?.namaSekolah || 'NAMA SEKOLAH'}</h1>
+            <p className="text-sm border-b-2 border-black pb-2 mb-2">{identity?.alamat || 'Alamat Sekolah'} | Tahun Pelajaran {identity?.tahunPelajaran || '-'} - {identity?.semester || '-'}</p>
+            <h2 className="text-xl font-bold mt-4">LAPORAN HASIL UJIAN</h2>
+            <p>{activeExam.title} (Kode: {activeExam.examCode || '-'})</p>
+            <p>Tanggal: {date}</p>
+        </div>
         <div className="flex justify-between items-center no-print">
-           <div><h2 className="text-2xl font-bold">Pemantauan</h2><p className="text-gray-500">Ujian Aktif: <strong>{activeExam.title}</strong></p></div>
+           <div>
+              <h2 className="text-2xl font-bold">Pemantauan</h2>
+              <div className="flex items-center gap-2 mt-2">
+                 <span className="text-gray-500 text-sm">Ujian Aktif: </span>
+                 <select className="border p-1.5 rounded text-sm font-bold bg-white text-blue-600 focus:ring focus:outline-none" value={selectedExamId} onChange={e => setSelectedExamId(e.target.value)}>
+                     {activeExams.map(e => <option key={e.id} value={e.id}>{e.title} (Kode: {e.examCode || '-'})</option>)}
+                 </select>
+              </div>
+           </div>
            <div className="flex gap-2">
                <select className="border p-2 rounded text-sm" value={filterClass} onChange={e => setFilterClass(e.target.value)}>
                    <option value="all">Semua Kelas</option>
@@ -692,11 +742,22 @@ const MonitoringView = ({ activeExam, results, students }) => {
             </tbody>
           </table>
         </div>
+
+        <div className="print-footer w-full pt-8">
+         <div className="float-right text-center w-64">
+            <p>....................., {date}</p>
+            <p>Kepala Sekolah</p>
+            <br/><br/><br/><br/>
+            <p className="font-bold underline">{identity?.kepalaSekolah || '________________________'}</p>
+            <p>NIP. {identity?.nip || '_________________'}</p>
+         </div>
+         <div className="clear-both"></div>
+        </div>
       </div>
     );
 };
 
-// --- LOGIN SCREEN (UPDATED) ---
+// --- LOGIN SCREEN ---
 const LoginScreen = ({ onLogin, students, admins, contributors, principals, loading, isAuthReady }) => {
   const [view, setView] = useState('select');
   const [role, setRole] = useState(null);
@@ -715,16 +776,23 @@ const LoginScreen = ({ onLogin, students, admins, contributors, principals, load
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (loading || !isAuthReady) return;
     setError('');
     setSuccessMsg('');
 
     if (role === 'student') {
-        toggleFullScreen();
         const student = students.find(s => s.username === formData.username && s.password === formData.password);
-        if (student) onLogin('student', student);
-        else setError('Username atau Password salah!');
+        if (student) {
+            if (student.isActive === false) {
+                setError('Akun Anda sedang dinonaktifkan. Silakan hubungi proktor.');
+                return;
+            }
+            toggleFullScreen();
+            onLogin('student', student);
+        } else {
+            setError('Username atau Password salah!');
+        }
     } else if (role === 'admin') {
       if (isRegistering) {
         if (!formData.name || !formData.username || !formData.password) {
@@ -763,6 +831,13 @@ const LoginScreen = ({ onLogin, students, admins, contributors, principals, load
         const principal = principals.find(p => p.username === formData.username && p.password === formData.password);
         if (principal) onLogin('principal', principal);
         else setError('Username atau Password salah!');
+    }
+  };
+
+  // Handler untuk menekan tombol enter
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleSubmit(e);
     }
   };
 
@@ -822,7 +897,8 @@ const LoginScreen = ({ onLogin, students, admins, contributors, principals, load
               {role === 'student' ? "Login Peserta Ujian" : (role === 'admin' ? (isRegistering ? "Buat Akun Admin Baru" : "Login Administrator") : (role === 'principal' ? "Login Kepala Sekolah" : "Login Kontributor"))}
             </p>
             
-            <form onSubmit={handleSubmit} className="space-y-4 text-left">
+            {/* Mengganti tag <form> menjadi <div> biasa dengan autoComplete="off" */}
+            <div className="space-y-4 text-left">
               {role === 'admin' && isRegistering && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
@@ -830,8 +906,10 @@ const LoginScreen = ({ onLogin, students, admins, contributors, principals, load
                     <UserPlus className="absolute left-3 top-2.5 text-gray-400 w-5 h-5" />
                     <input 
                       type="text"
+                      autoComplete="off"
                       value={formData.name}
                       onChange={e => setFormData({...formData, name: e.target.value})}
+                      onKeyDown={handleKeyDown}
                       className="w-full pl-10 p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
                       placeholder="Nama Lengkap"
                       required
@@ -846,8 +924,10 @@ const LoginScreen = ({ onLogin, students, admins, contributors, principals, load
                   <User className="absolute left-3 top-2.5 text-gray-400 w-5 h-5" />
                   <input 
                     type="text"
+                    autoComplete="off"
                     value={formData.username}
                     onChange={e => setFormData({...formData, username: e.target.value})}
+                    onKeyDown={handleKeyDown}
                     className="w-full pl-10 p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
                     placeholder="Masukkan username"
                     required
@@ -861,8 +941,10 @@ const LoginScreen = ({ onLogin, students, admins, contributors, principals, load
                   <Key className="absolute left-3 top-2.5 text-gray-400 w-5 h-5" />
                   <input 
                     type="password"
+                    autoComplete="new-password"
                     value={formData.password}
                     onChange={e => setFormData({...formData, password: e.target.value})}
+                    onKeyDown={handleKeyDown}
                     className="w-full pl-10 p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
                     placeholder="Masukkan password"
                     required
@@ -882,7 +964,8 @@ const LoginScreen = ({ onLogin, students, admins, contributors, principals, load
                 </div>
               )}
 
-              <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition disabled:bg-gray-400">
+              {/* Tombol dengan type="button" dan memanggil handleSubmit langsung */}
+              <button type="button" onClick={handleSubmit} disabled={loading} className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition disabled:bg-gray-400">
                 {loading ? 'Memuat...' : (isRegistering ? 'Daftar' : 'Masuk')}
               </button>
 
@@ -902,7 +985,7 @@ const LoginScreen = ({ onLogin, students, admins, contributors, principals, load
                   </button>
                 </div>
               )}
-            </form>
+            </div>
           </>
         )}
       </div>
@@ -910,9 +993,9 @@ const LoginScreen = ({ onLogin, students, admins, contributors, principals, load
   );
 };
 
-// --- ADMIN DASHBOARD (UPDATED FOR ROLES) ---
+// --- ADMIN DASHBOARD ---
 const AdminDashboard = ({ 
-  questions, exams, students, results, contributors, principals,
+  questions, exams, students, results, contributors, principals, identity,
   onLogout, userRole 
 }) => {
   const isPrincipal = userRole === 'principal';
@@ -923,14 +1006,26 @@ const AdminDashboard = ({
   const [categoryFilter, setCategoryFilter] = useState('Semua'); 
   const [examView, setExamView] = useState('list');
   const fileInputRef = useRef(null);
-  
-  const activeExam = (exams || []).find(e => e.isActive);
 
   const [isEditingQ, setIsEditingQ] = useState(false);
   const [qForm, setQForm] = useState(null);
-  const [examForm, setExamForm] = useState({ title: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false, allowedSessions: ['1', '2', '3', '4'], maxAttempts: 1 });
+  const [examForm, setExamForm] = useState({ title: '', examCode: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false, allowedSessions: ['1', '2', '3', '4'], allowedClasses: [], maxAttempts: 1 });
   const [isEditingStudent, setIsEditingStudent] = useState(false);
-  const [studentForm, setStudentForm] = useState({ name: '', username: '', password: '', class: '', session: '1' });
+  const [studentForm, setStudentForm] = useState({ name: '', username: '', password: '', class: '', session: '1', isActive: true });
+  const [identitasForm, setIdentitasForm] = useState({ namaSekolah: '', alamat: '', tahunPelajaran: '', semester: 'Ganjil', kepalaSekolah: '', nip: '' });
+
+  useEffect(() => {
+    if (identity) {
+        setIdentitasForm({
+            namaSekolah: identity.namaSekolah || '',
+            alamat: identity.alamat || '',
+            tahunPelajaran: identity.tahunPelajaran || '',
+            semester: identity.semester || 'Ganjil',
+            kepalaSekolah: identity.kepalaSekolah || '',
+            nip: identity.nip || ''
+        });
+    }
+  }, [identity]);
   
   // States untuk Sorting Peserta
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
@@ -989,11 +1084,11 @@ const AdminDashboard = ({
   };
 
   const openExamForm = (e=null) => { 
-    setExamForm(e ? {...e} : { title: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false, allowedSessions: ['1', '2', '3', '4'], maxAttempts: 1 }); 
+    setExamForm(e ? {...e, allowedClasses: e.allowedClasses || []} : { title: '', examCode: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false, allowedSessions: ['1', '2', '3', '4'], allowedClasses: [], maxAttempts: 1 }); 
     setExamView('form'); 
   };
   const handleSaveExam = async () => { 
-    if(!examForm.title) return alert("Nama ujian wajib diisi!");
+    if(!examForm.title || !examForm.examCode) return alert("Nama dan Kode ujian wajib diisi!");
     try {
       if (examForm.id) {
         await updateDoc(getDocRef('exams', examForm.id), examForm);
@@ -1013,6 +1108,10 @@ const AdminDashboard = ({
   const toggleSession = (ses) => { 
       const s = examForm.allowedSessions || []; 
       setExamForm({...examForm, allowedSessions: s.includes(ses) ? s.filter(id=>id!==ses) : [...s, ses]}); 
+  };
+  const toggleClassAllowed = (cls) => {
+      const c = examForm.allowedClasses || [];
+      setExamForm({...examForm, allowedClasses: c.includes(cls) ? c.filter(id=>id!==cls) : [...c, cls]});
   };
 
   const handleSaveStudent = async () => {
@@ -1047,7 +1146,8 @@ const AdminDashboard = ({
             username: p[1], 
             password: p[2],
             class: p[3] ? p[3].trim() : '-',
-            session: p[4] ? p[4].trim() : '1'
+            session: p[4] ? p[4].trim() : '1',
+            isActive: true
           });
           count++;
         }
@@ -1096,6 +1196,13 @@ const AdminDashboard = ({
   };
 
   const handleDeletePrincipal = async (id) => { if(window.confirm('Hapus akun Kepala Sekolah ini?')) await deleteDoc(getDocRef('principals', id)); };
+
+  const handleSaveIdentitas = async () => {
+      try {
+          await setDoc(getDocRef('settings', 'identity'), identitasForm, { merge: true });
+          alert("Identitas Sekolah berhasil disimpan!");
+      } catch (e) { alert("Gagal menyimpan identitas: " + e.message); }
+  };
 
   const handleSeedData = async () => {
     if(!window.confirm("Database Anda akan diisi dengan data contoh (Soal, Siswa, Ujian). Lanjutkan?")) return;
@@ -1181,6 +1288,7 @@ const AdminDashboard = ({
           {/* Menu Kontributor Hanya Admin */}
           {!isContributor && !isPrincipal && (
               <>
+                <button onClick={() => setActiveTab('identitas')} className={`px-4 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'identitas' ? 'bg-white shadow' : 'text-gray-600'}`}><Building size={16} className="mr-2"/> Profil Sekolah</button>
                 <button onClick={() => setActiveTab('contributors')} className={`px-4 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'contributors' ? 'bg-white shadow' : 'text-gray-600'}`}><UsersCog size={16} className="mr-2"/> Kontributor</button>
                 <button onClick={() => setActiveTab('principals')} className={`px-4 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'principals' ? 'bg-white shadow' : 'text-gray-600'}`}><School size={16} className="mr-2"/> Kepala Sekolah</button>
               </>
@@ -1235,8 +1343,19 @@ const AdminDashboard = ({
                 <div className="flex justify-between items-center mb-6"><h3 className="text-xl font-bold">{examForm.id ? 'Edit' : 'Baru'} Paket Ujian</h3><button onClick={()=>setExamView('list')}><X/></button></div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                    <div className="space-y-4">
-                       <input value={examForm.title} onChange={e=>setExamForm({...examForm, title:e.target.value})} className="border p-2 rounded w-full" placeholder="Nama Ujian"/>
-                       <input type="number" value={examForm.duration} onChange={e=>setExamForm({...examForm, duration:parseInt(e.target.value)})} className="border p-2 rounded w-full" placeholder="Durasi (menit)"/>
+                       <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Nama Ujian</label>
+                          <input value={examForm.title} onChange={e=>setExamForm({...examForm, title:e.target.value})} className="border p-2 rounded w-full" placeholder="Nama Ujian"/>
+                       </div>
+                       <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Kode Ujian / Token</label>
+                          <input value={examForm.examCode || ''} onChange={e=>setExamForm({...examForm, examCode:e.target.value.toUpperCase()})} className="border p-2 rounded w-full font-bold uppercase" placeholder="Misal: MTK01"/>
+                          <p className="text-xs text-gray-400 mt-1">Siswa membutuhkan kode ini untuk masuk ke dalam soal.</p>
+                       </div>
+                       <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Durasi (Menit)</label>
+                          <input type="number" value={examForm.duration} onChange={e=>setExamForm({...examForm, duration:parseInt(e.target.value)})} className="border p-2 rounded w-full" placeholder="Durasi (menit)"/>
+                       </div>
                        <div className="flex gap-4">
                          <label className="flex items-center"><input type="checkbox" checked={examForm.randomizeQuestions} onChange={e=>setExamForm({...examForm, randomizeQuestions:e.target.checked})} className="mr-2"/> Acak Soal</label>
                          <label className="flex items-center"><input type="checkbox" checked={examForm.randomizeOptions} onChange={e=>setExamForm({...examForm, randomizeOptions:e.target.checked})} className="mr-2"/> Acak Opsi</label>
@@ -1264,6 +1383,28 @@ const AdminDashboard = ({
                        </div>
                        <p className="text-xs text-gray-400 mt-2">Hanya siswa dengan sesi yang dicentang yang bisa masuk ujian ini.</p>
                    </div>
+
+                   <div className="bg-gray-50 p-4 rounded border mt-4">
+                       <h4 className="font-bold text-sm mb-3 text-gray-600">Kelas yang Diizinkan:</h4>
+                       <div className="flex gap-2 flex-wrap max-h-32 overflow-y-auto">
+                          {(() => {
+                              const uniqueClasses = [...new Set(students.map(s => s.class || '-').filter(c => c !== '-'))].sort();
+                              if (uniqueClasses.length === 0) return <span className="text-sm text-gray-500">Belum ada data kelas siswa.</span>;
+                              return uniqueClasses.map(cls => (
+                                  <label key={cls} className="flex items-center bg-white border px-3 py-2 rounded cursor-pointer hover:bg-gray-50 text-sm">
+                                      <input 
+                                        type="checkbox" 
+                                        checked={(examForm.allowedClasses || []).includes(cls)} 
+                                        onChange={() => toggleClassAllowed(cls)}
+                                        className="mr-2 w-4 h-4 accent-blue-600"
+                                      />
+                                      {cls}
+                                  </label>
+                              ));
+                          })()}
+                       </div>
+                       <p className="text-xs text-gray-400 mt-2">Biarkan KOSONG jika semua kelas diizinkan.</p>
+                   </div>
                 </div>
                 <div className="border-t pt-4">
                    <div className="flex justify-between mb-2"><p className="font-bold">Pilih Soal:</p><span className="text-xs text-gray-400">{examForm.questionIds.length} terpilih</span></div>
@@ -1284,7 +1425,7 @@ const AdminDashboard = ({
           ) : (
             <>
               <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold">Daftar Paket</h2><button onClick={() => openExamForm()} className="bg-green-600 text-white px-4 py-2 rounded flex items-center"><Plus size={18} className="mr-2"/> Buat Baru</button></div>
-              <div className="grid gap-4">{exams.map((exam) => {const isActive = exam.isActive; return (<div key={exam.id} className={`bg-white p-6 rounded-lg border-2 ${isActive ? 'border-green-500 shadow-md' : 'border-gray-100'}`}><div className="flex justify-between items-start"><div><h3 className="font-bold text-lg">{exam.title}</h3>{isActive && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold">AKTIF</span>}<p className="text-sm text-gray-500 mt-1">{exam.duration} Menit • {exam.questionIds.length} Soal • Sesi: {(exam.allowedSessions || []).join(', ')} • Max: {exam.maxAttempts || 1}x</p></div><div className="flex gap-2"><button onClick={() => toggleExamStatus(exam)} className={`px-3 py-1 rounded text-sm font-bold flex items-center ${isActive ? 'bg-red-100 text-red-700' : 'bg-gray-100 hover:bg-green-100 text-gray-700 hover:text-green-700'}`}>{isActive ? <><StopCircle size={14} className="mr-1"/> Stop</> : <><PlayCircle size={14} className="mr-1"/> Mulai</>}</button><button onClick={()=>openExamForm(exam)} className="p-2 text-blue-500"><Edit size={16}/></button><button onClick={()=>handleDeleteExam(exam.id)} className="p-2 text-red-500"><Trash2 size={16}/></button></div></div></div>);})}</div>
+              <div className="grid gap-4">{exams.map((exam) => {const isActive = exam.isActive; return (<div key={exam.id} className={`bg-white p-6 rounded-lg border-2 ${isActive ? 'border-green-500 shadow-md' : 'border-gray-100'}`}><div className="flex justify-between items-start"><div><h3 className="font-bold text-lg">{exam.title} <span className="text-sm font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded border ml-2">Kode: <strong>{exam.examCode || '-'}</strong></span></h3>{isActive && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold mt-1 inline-block">AKTIF</span>}<p className="text-sm text-gray-500 mt-1">{exam.duration} Menit • {exam.questionIds.length} Soal • Sesi: {(exam.allowedSessions || []).join(', ')} • Max: {exam.maxAttempts || 1}x{(exam.allowedClasses && exam.allowedClasses.length > 0) ? ` • Kelas: ${exam.allowedClasses.join(', ')}` : ''}</p></div><div className="flex gap-2"><button onClick={() => toggleExamStatus(exam)} className={`px-3 py-1 rounded text-sm font-bold flex items-center ${isActive ? 'bg-red-100 text-red-700' : 'bg-gray-100 hover:bg-green-100 text-gray-700 hover:text-green-700'}`}>{isActive ? <><StopCircle size={14} className="mr-1"/> Stop</> : <><PlayCircle size={14} className="mr-1"/> Mulai</>}</button><button onClick={()=>openExamForm(exam)} className="p-2 text-blue-500"><Edit size={16}/></button><button onClick={()=>handleDeleteExam(exam.id)} className="p-2 text-red-500"><Trash2 size={16}/></button></div></div></div>);})}</div>
             </>
         ))}
         {activeTab === 'students' && !isContributor && !isPrincipal && (isEditingStudent ? (
@@ -1303,6 +1444,10 @@ const AdminDashboard = ({
                  </div>
                  <input value={studentForm.username} onChange={e=>setStudentForm({...studentForm, username:e.target.value})} className="border p-2 w-full rounded" placeholder="Username"/>
                  <input value={studentForm.password} onChange={e=>setStudentForm({...studentForm, password:e.target.value})} className="border p-2 w-full rounded" placeholder="Password"/>
+                 <label className="flex items-center mt-2 cursor-pointer">
+                     <input type="checkbox" checked={studentForm.isActive !== false} onChange={e=>setStudentForm({...studentForm, isActive: e.target.checked})} className="mr-2 w-4 h-4 accent-blue-600"/>
+                     <span className="text-sm font-bold text-gray-700">Akun Aktif (Bisa Login)</span>
+                 </label>
                </div>
                <div className="mt-4 flex justify-end gap-2"><button onClick={()=>setIsEditingStudent(false)} className="px-3 py-2 border rounded">Batal</button><button onClick={handleSaveStudent} className="px-3 py-2 bg-blue-600 text-white rounded">Simpan</button></div>
              </div>
@@ -1313,7 +1458,7 @@ const AdminDashboard = ({
                 <div className="flex gap-2">
                   <input type="file" accept=".csv" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
                   <button onClick={handleImportClick} className="bg-green-600 text-white px-3 py-2 rounded flex items-center text-sm"><Upload size={16} className="mr-2"/> Impor CSV</button>
-                  <button onClick={()=> {setStudentForm({name:'', username:'', password:'', class: '', session: '1'}); setIsEditingStudent(true);}} className="bg-blue-600 text-white px-3 py-2 rounded flex items-center text-sm"><Plus size={16} className="mr-2"/> Tambah</button>
+                  <button onClick={()=> {setStudentForm({name:'', username:'', password:'', class: '', session: '1', isActive: true}); setIsEditingStudent(true);}} className="bg-blue-600 text-white px-3 py-2 rounded flex items-center text-sm"><Plus size={16} className="mr-2"/> Tambah</button>
                 </div>
               </div>
               <div className="bg-white shadow rounded-lg overflow-hidden border overflow-x-auto">
@@ -1328,6 +1473,7 @@ const AdminDashboard = ({
                       </th>
                       <th className="p-4">Sesi</th>
                       <th className="p-4">Username</th>
+                      <th className="p-4">Status</th>
                       <th className="p-4 text-center">Aksi</th>
                     </tr>
                   </thead>
@@ -1338,8 +1484,17 @@ const AdminDashboard = ({
                         <td className="p-4"><span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded border">{s.class || '-'}</span></td>
                         <td className="p-4"><span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded">Sesi {s.session || '1'}</span></td>
                         <td className="p-4 font-mono text-gray-600">{s.username}</td>
+                        <td className="p-4">
+                            <button 
+                                onClick={async () => await updateDoc(getDocRef('students', s.id), { isActive: s.isActive === false ? true : false })} 
+                                className={`px-2 py-1 text-xs font-bold rounded border ${s.isActive !== false ? 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200' : 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200'}`}
+                                title="Klik untuk mengubah status"
+                            >
+                                {s.isActive !== false ? 'Aktif' : 'Nonaktif'}
+                            </button>
+                        </td>
                         <td className="p-4 text-center space-x-2">
-                          <button onClick={() => {setStudentForm({...s}); setIsEditingStudent(true);}} className="text-blue-600"><Edit size={16}/></button>
+                          <button onClick={() => {setStudentForm({...s, isActive: s.isActive !== false}); setIsEditingStudent(true);}} className="text-blue-600"><Edit size={16}/></button>
                           <button onClick={() => handleDeleteStudent(s.id)} className="text-red-600"><Trash2 size={16}/></button>
                         </td>
                       </tr>
@@ -1385,51 +1540,68 @@ const AdminDashboard = ({
               </div>
             </>
         ))}
-        {activeTab === 'principals' && !isContributor && !isPrincipal && (isEditingPrincipal ? (
-             <div className="bg-white p-6 rounded-lg shadow max-w-md mx-auto">
-               <h3 className="font-bold mb-4">{principalForm.id ? 'Edit' : 'Tambah'} Kepala Sekolah</h3>
-               <div className="space-y-3">
-                 <input value={principalForm.name} onChange={e=>setPrincipalForm({...principalForm, name:e.target.value})} className="border p-2 w-full rounded" placeholder="Nama Kepala Sekolah"/>
-                 <input value={principalForm.username} onChange={e=>setPrincipalForm({...principalForm, username:e.target.value})} className="border p-2 w-full rounded" placeholder="Username (Login)"/>
-                 <input value={principalForm.password} onChange={e=>setPrincipalForm({...principalForm, password:e.target.value})} className="border p-2 w-full rounded" placeholder="Password"/>
+        {activeTab === 'identitas' && !isContributor && !isPrincipal && (
+            <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200 max-w-2xl mx-auto">
+               <div className="flex items-center mb-6 border-b pb-4">
+                  <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mr-4">
+                     <Building size={24} />
+                  </div>
+                  <div>
+                     <h2 className="text-2xl font-bold text-gray-800">Profil & Identitas Sekolah</h2>
+                     <p className="text-sm text-gray-500">Digunakan untuk kop surat pada laporan ujian.</p>
+                  </div>
                </div>
-               <div className="mt-4 flex justify-end gap-2"><button onClick={()=>setIsEditingPrincipal(false)} className="px-3 py-2 border rounded">Batal</button><button onClick={handleSavePrincipal} className="px-3 py-2 bg-blue-600 text-white rounded">Simpan</button></div>
-             </div>
-          ) : (
-            <>
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Daftar Kepala Sekolah</h2>
-                <button onClick={()=> {setPrincipalForm({name:'', username:'', password:''}); setIsEditingPrincipal(true);}} className="bg-blue-600 text-white px-3 py-2 rounded flex items-center text-sm"><Plus size={16} className="mr-2"/> Tambah Akun</button>
-              </div>
-              <div className="bg-white shadow rounded-lg overflow-hidden border overflow-x-auto">
-                <table className="w-full text-left text-sm min-w-[600px]">
-                    <thead className="bg-gray-50 font-bold"><tr><th className="p-4">Nama</th><th className="p-4">Username</th><th className="p-4 text-center">Aksi</th></tr></thead>
-                    <tbody className="divide-y">
-                        {(principals || []).map(p => (
-                            <tr key={p.id} className="hover:bg-gray-50">
-                                <td className="p-4">{p.name}</td>
-                                <td className="p-4 font-mono text-gray-600">{p.username}</td>
-                                <td className="p-4 text-center space-x-2">
-                                    <button onClick={() => {setPrincipalForm({...p}); setIsEditingPrincipal(true);}} className="text-blue-600"><Edit size={16}/></button>
-                                    <button onClick={() => handleDeletePrincipal(p.id)} className="text-red-600"><Trash2 size={16}/></button>
-                                </td>
-                            </tr>
-                        ))}
-                        {(principals || []).length === 0 && <tr><td colSpan="3" className="p-4 text-center text-gray-400">Belum ada akun Kepala Sekolah.</td></tr>}
-                    </tbody>
-                </table>
-              </div>
-            </>
-        ))}
-        {activeTab === 'monitoring' && !isContributor && <MonitoringView activeExam={activeExam} results={results} students={students} />}
-        {activeTab === 'history' && !isContributor && <HistoryView results={results} exams={exams} students={students} />}
+               
+               <div className="space-y-5">
+                   <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">Nama Sekolah</label>
+                      <input value={identitasForm.namaSekolah || ''} onChange={e=>setIdentitasForm({...identitasForm, namaSekolah: e.target.value})} className="border border-gray-300 p-2.5 w-full rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="Contoh: SMA Negeri 1 Indonesia"/>
+                   </div>
+                   <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">Alamat Lengkap</label>
+                      <textarea value={identitasForm.alamat || ''} onChange={e=>setIdentitasForm({...identitasForm, alamat: e.target.value})} className="border border-gray-300 p-2.5 w-full rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition h-24" placeholder="Jalan, Desa, Kecamatan, Kab/Kota, Provinsi"/>
+                   </div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                       <div>
+                          <label className="block text-sm font-bold text-gray-700 mb-1">Tahun Pelajaran</label>
+                          <input value={identitasForm.tahunPelajaran || ''} onChange={e=>setIdentitasForm({...identitasForm, tahunPelajaran: e.target.value})} className="border border-gray-300 p-2.5 w-full rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="Misal: 2023/2024"/>
+                       </div>
+                       <div>
+                          <label className="block text-sm font-bold text-gray-700 mb-1">Semester</label>
+                          <select value={identitasForm.semester || 'Ganjil'} onChange={e=>setIdentitasForm({...identitasForm, semester: e.target.value})} className="border border-gray-300 p-2.5 w-full rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition">
+                              <option value="Ganjil">Ganjil</option>
+                              <option value="Genap">Genap</option>
+                          </select>
+                       </div>
+                       <div className="md:col-span-2 mt-4 border-t pt-4">
+                          <h3 className="font-bold text-gray-800 mb-4">Penandatangan Laporan</h3>
+                       </div>
+                       <div>
+                          <label className="block text-sm font-bold text-gray-700 mb-1">Nama Kepala Sekolah</label>
+                          <input value={identitasForm.kepalaSekolah || ''} onChange={e=>setIdentitasForm({...identitasForm, kepalaSekolah: e.target.value})} className="border border-gray-300 p-2.5 w-full rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="Nama lengkap beserta gelar"/>
+                       </div>
+                       <div>
+                          <label className="block text-sm font-bold text-gray-700 mb-1">NIP Kepala Sekolah</label>
+                          <input value={identitasForm.nip || ''} onChange={e=>setIdentitasForm({...identitasForm, nip: e.target.value})} className="border border-gray-300 p-2.5 w-full rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="NIP (Kosongkan jika tidak ada)"/>
+                       </div>
+                   </div>
+               </div>
+               <div className="mt-8 flex justify-end">
+                  <button onClick={handleSaveIdentitas} className="px-6 py-2.5 bg-blue-600 text-white rounded-md font-bold hover:bg-blue-700 flex items-center shadow-md transition">
+                     <Save size={18} className="mr-2"/> Simpan Identitas
+                  </button>
+               </div>
+            </div>
+        )}
+        {activeTab === 'monitoring' && !isContributor && <MonitoringView exams={exams} results={results} students={students} identity={identity} />}
+        {activeTab === 'history' && !isContributor && <HistoryView results={results} exams={exams} students={students} identity={identity} />}
       </div>
     </div>
   );
 };
 
-// --- SISWA ---
-const StudentExam = ({ questions, activeExam, currentUser, onLogout, results }) => {
+// --- SISWA (DILENGKAPI LOCKDOWN FULLSCREEN) ---
+const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, onBack }) => {
   const [processedQuestions, setProcessedQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -1438,17 +1610,17 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results }) 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [examFinished, setExamFinished] = useState(false);
   const [score, setScore] = useState(0);
-  const [resultId, setResultId] = useState(null); // State untuk ID unik sesi ini
-  const [sessionError, setSessionError] = useState(null); // State untuk error sesi
-  const [attemptError, setAttemptError] = useState(null); // State untuk error attempt
+  const [resultId, setResultId] = useState(null); 
+  const [sessionError, setSessionError] = useState(null); 
+  const [attemptError, setAttemptError] = useState(null); 
+  
+  // STATE KEAMANAN
+  const [isViolating, setIsViolating] = useState(false);
 
-  // EFFECT 1: Check Attempts (Run once or when activeExam changes)
+  // EFFECT 1: Check Attempts
   useEffect(() => {
     if (!activeExam || !currentUser || !results) return;
 
-    // Hitung berapa kali siswa ini SUDAH menyelesaikan ujian ini (status: finished)
-    // Kita filter hanya yang 'finished'. Yang 'ongoing' tidak dihitung sebagai penggunaan 'jatah' 
-    // sampai mereka menyelesaikannya.
     const maxAttempts = parseInt(activeExam.maxAttempts || 1);
     const myFinishedResults = results.filter(r => 
         r.examId === activeExam.id && 
@@ -1461,13 +1633,12 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results }) 
     } else {
         setAttemptError(null);
     }
-  }, [activeExam?.id, currentUser?.id, results.length]); // Dependensi minimal agar tidak render berulang saat typing
+  }, [activeExam?.id, currentUser?.id, results.length]); 
 
-  // EFFECT 2: Initialization (Only run if no error)
+  // EFFECT 2: Initialization
   useEffect(() => {
     if(!activeExam || sessionError || attemptError) return;
 
-    // VALIDASI SESI SEBELUM MEMULAI
     const allowed = activeExam.allowedSessions || []; 
     const userSession = currentUser.session || '1'; 
 
@@ -1476,34 +1647,58 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results }) 
         return; 
     }
 
-    // Pastikan questions sudah dimuat sebelum inisialisasi
+    const allowedClasses = activeExam.allowedClasses || [];
+    const userClass = currentUser.class || '-';
+    if (allowedClasses.length > 0 && !allowedClasses.includes(userClass)) {
+        setSessionError(`Maaf, Ujian ini tidak diperuntukkan untuk kelas Anda (${userClass}).`);
+        return;
+    }
+
     if (activeExam && questions.length > 0) {
-      // Cek apakah data pertanyaan sudah ada di state lokal untuk mencegah re-shuffle saat re-render
-      // Kita gunakan processedQuestions.length sebagai flag sederhana
       if (processedQuestions.length > 0) return;
 
-      let qList = questions.filter(q => activeExam.questionIds.includes(q.id));
-      if (activeExam.randomizeQuestions) qList = shuffleArray(qList);
-      
-      // Randomize options ONLY for Single/Multiple choice
-      if (activeExam.randomizeOptions) {
-        qList = qList.map(q => {
-          if (q.type === 'single' || q.type === 'multiple') {
-            return {...q, options: shuffleArray([...q.options])};
-          }
-          return q;
-        });
+      const storageKey = `exam_data_${currentUser.id}_${activeExam.id}`;
+      const savedDataStr = localStorage.getItem(storageKey);
+      let currentSessionId;
+
+      if (savedDataStr) {
+          try {
+              const savedData = JSON.parse(savedDataStr);
+              setProcessedQuestions(savedData.processedQuestions);
+              setAnswers(savedData.answers || {});
+              setRaguRagu(savedData.raguRagu || {});
+              setTimeLeft(savedData.timeLeft);
+              currentSessionId = savedData.resultId;
+              setResultId(currentSessionId);
+          } catch (e) { console.error("Gagal memulihkan data ujian:", e); }
       }
-      setProcessedQuestions(qList); 
-      setTimeLeft(activeExam.duration * 60);
-      
-      // LOGIKA BARU: Generate ID Unik per Sesi
-      const sessionKey = `exam_session_${currentUser.id}_${activeExam.id}`;
-      let currentSessionId = sessionStorage.getItem(sessionKey);
 
       if (!currentSessionId) {
+        let qList = questions.filter(q => activeExam.questionIds.includes(q.id));
+        if (activeExam.randomizeQuestions) qList = shuffleArray(qList);
+        
+        if (activeExam.randomizeOptions) {
+          qList = qList.map(q => {
+            if (q.type === 'single' || q.type === 'multiple') {
+              return {...q, options: shuffleArray([...q.options])};
+            }
+            return q;
+          });
+        }
+        setProcessedQuestions(qList); 
+        const initialTime = activeExam.duration * 60;
+        setTimeLeft(initialTime);
+        
         currentSessionId = `${activeExam.id}_${currentUser.id}_${Date.now()}`;
-        sessionStorage.setItem(sessionKey, currentSessionId);
+        setResultId(currentSessionId);
+
+        localStorage.setItem(storageKey, JSON.stringify({
+            processedQuestions: qList,
+            answers: {},
+            raguRagu: {},
+            timeLeft: initialTime,
+            resultId: currentSessionId
+        }));
 
         const resultData = {
           examId: activeExam.id,
@@ -1520,12 +1715,12 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results }) 
           setDoc(getDocRef('results', currentSessionId), resultData, { merge: true });
         } catch (e) { console.error("Error init exam:", e); }
       }
-
-      setResultId(currentSessionId);
     }
-  }, [activeExam?.id, questions, currentUser, sessionError, attemptError]); // processedQuestions logic handles re-entry
+  }, [activeExam?.id, questions, currentUser, sessionError, attemptError]);
 
+  // EFFECT 3: Timer & Auto Submit
   useEffect(() => {
+    // Timer JANGAN berjalan jika siswa sedang melanggar (memilih opsi: biarkan timer berhenti saat melanggar atau tetap jalan. Di sini tetap jalan agar adil)
     if (timeLeft > 0 && !examFinished) {
       const timerId = setInterval(() => setTimeLeft(p => p - 1), 1000);
       return () => clearInterval(timerId);
@@ -1534,12 +1729,56 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results }) 
     }
   }, [timeLeft, examFinished, activeExam, processedQuestions.length]);
 
-  const handleLogoutWrapper = () => {
-    if (activeExam && currentUser) {
-        sessionStorage.removeItem(`exam_session_${currentUser.id}_${activeExam.id}`);
+  // EFFECT 4: Sinkronisasi progress ujian ke LocalStorage secara realtime
+  useEffect(() => {
+    if (processedQuestions.length > 0 && resultId && activeExam && currentUser) {
+        const storageKey = `exam_data_${currentUser.id}_${activeExam.id}`;
+        localStorage.setItem(storageKey, JSON.stringify({
+            processedQuestions,
+            answers,
+            raguRagu,
+            timeLeft,
+            resultId
+        }));
     }
-    onLogout();
-  };
+  }, [answers, raguRagu, timeLeft, processedQuestions, resultId, activeExam, currentUser]);
+
+  // EFFECT 5: LOCKDOWN KEAMANAN (FULLSCREEN & TAB SWITCHING)
+  useEffect(() => {
+    if (!activeExam || examFinished) return;
+
+    const handleFullscreenChange = () => {
+      // Jika mendeteksi tidak dalam mode layar penuh, aktifkan status pelanggaran
+      if (!document.fullscreenElement) {
+        setIsViolating(true);
+      } else {
+        setIsViolating(false);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      // Jika pengguna berpindah tab atau mengecilkan browser
+      if (document.hidden) {
+        setIsViolating(true);
+      }
+    };
+
+    // Pengecekan inisial (diberi jeda agar animasi fullscreen saat login selesai dulu)
+    const initialCheck = setTimeout(() => {
+      if (!document.fullscreenElement) {
+        setIsViolating(true);
+      }
+    }, 500);
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearTimeout(initialCheck);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [activeExam, examFinished]);
 
   const finishExam = async () => {
     if (!resultId) return;
@@ -1577,7 +1816,8 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results }) 
     setScore(finalScore);
     setExamFinished(true);
     
-    sessionStorage.removeItem(`exam_session_${currentUser.id}_${activeExam.id}`);
+    const storageKey = `exam_data_${currentUser.id}_${activeExam.id}`;
+    localStorage.removeItem(storageKey);
 
     if (document.fullscreenElement && document.exitFullscreen) {
         document.exitFullscreen().catch(err => console.log(err));
@@ -1617,9 +1857,8 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results }) 
     } catch(e) { console.error(e); }
   };
 
-  if (!activeExam) return (<div className="h-screen flex flex-col items-center justify-center bg-gray-50"><div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md"><div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"><StopCircle size={32} /></div><h2 className="text-xl font-bold text-gray-800">Tidak Ada Ujian Aktif</h2><p className="text-gray-500 mb-6">Halo, {currentUser.name}. Saat ini belum ada ujian yang aktif.</p><button onClick={handleLogoutWrapper} className="px-6 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg transition">Keluar</button></div></div>);
+  if (!activeExam) return (<div className="h-screen flex flex-col items-center justify-center bg-gray-50"><div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md"><div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"><StopCircle size={32} /></div><h2 className="text-xl font-bold text-gray-800">Tidak Ada Ujian Aktif</h2><p className="text-gray-500 mb-6">Halo, {currentUser.name}. Saat ini belum ada ujian yang aktif.</p><button onClick={onBack} className="px-6 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg transition">Kembali ke Beranda</button></div></div>);
   
-  // TAMPILAN ERROR ATTEMPT
   if (attemptError) {
       return (
         <div className="h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
@@ -1632,15 +1871,14 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results }) 
                 <div className="text-xs text-gray-400 mb-6 bg-gray-100 p-3 rounded">
                     Anda tidak diizinkan mengulang ujian ini lagi.
                 </div>
-                <button onClick={handleLogoutWrapper} className="w-full px-6 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg transition font-medium">
-                    Kembali ke Login
+                <button onClick={onBack} className="w-full px-6 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg transition font-medium">
+                    Kembali ke Beranda
                 </button>
             </div>
         </div>
       );
   }
 
-  // TAMPILAN ERROR SESI
   if (sessionError) {
       return (
         <div className="h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
@@ -1653,8 +1891,8 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results }) 
                 <div className="text-xs text-gray-400 mb-6 bg-gray-100 p-3 rounded">
                     Silakan hubungi proktor jika Anda merasa ini adalah kesalahan.
                 </div>
-                <button onClick={handleLogoutWrapper} className="w-full px-6 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg transition font-medium">
-                    Kembali ke Login
+                <button onClick={onBack} className="w-full px-6 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg transition font-medium">
+                    Kembali ke Beranda
                 </button>
             </div>
         </div>
@@ -1671,9 +1909,36 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results }) 
           <h2 className="text-2xl font-bold mb-2">Ujian Selesai!</h2>
           <p className="text-gray-500 mb-4">Terima kasih, {currentUser.name}.</p>
           <div className="bg-blue-50 p-6 rounded mb-6"><span className="text-sm font-bold text-blue-600 uppercase">Nilai Akhir</span><div className="text-5xl font-bold text-blue-800 mt-2">{score.toFixed(1)}</div></div>
-          <button onClick={handleLogoutWrapper} className="w-full bg-gray-800 hover:bg-gray-900 text-white py-3 rounded font-bold transition">Keluar Aplikasi</button>
+          <button onClick={onBack} className="w-full bg-gray-800 hover:bg-gray-900 text-white py-3 rounded font-bold transition">Kembali ke Beranda</button>
         </div>
       </div>
+    );
+  }
+
+  // TAMPILAN LOCKDOWN (Jika siswa keluar fullscreen atau pindah tab)
+  if (isViolating && !examFinished) {
+    return (
+        <div className="h-screen flex flex-col items-center justify-center bg-gray-900 p-4 z-50 fixed inset-0">
+            <div className="bg-white p-8 rounded-xl shadow-2xl text-center max-w-md w-full border-t-8 border-red-600 animate-pulse">
+                <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <AlertCircle className="w-10 h-10 text-red-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Aplikasi Terkunci!</h2>
+                <p className="text-gray-600 mb-6">Anda terdeteksi keluar dari layar penuh atau membuka aplikasi/tab lain. <br/><br/><strong>Ujian tidak dapat dilanjutkan sebelum Anda kembali.</strong></p>
+                <button
+                    onClick={() => {
+                        document.documentElement.requestFullscreen().then(() => {
+                            setIsViolating(false);
+                        }).catch(e => {
+                            alert("Browser Anda menolak untuk masuk ke layar penuh.");
+                        });
+                    }}
+                    className="w-full px-6 py-4 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition flex justify-center items-center text-lg shadow-lg hover:shadow-xl"
+                >
+                    <Maximize size={24} className="mr-2" /> Kembali ke Layar Penuh
+                </button>
+            </div>
+        </div>
     );
   }
 
@@ -1827,11 +2092,91 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results }) 
   );
 };
 
+// --- STUDENT DASHBOARD (KODE UJIAN) ---
+const StudentDashboard = ({ questions, exams, currentUser, onLogout, results }) => {
+    const [selectedExamId, setSelectedExamId] = useState(null);
+    const [inputCode, setInputCode] = useState('');
+    const [error, setError] = useState('');
+
+    // Cek apakah ada ujian yang sedang berlangsung (supaya langsung di-redirect ke soal jika reload)
+    useEffect(() => {
+        const ongoing = results.find(r => r.studentId === currentUser.id && r.status === 'ongoing');
+        if (ongoing) setSelectedExamId(ongoing.examId);
+    }, [results, currentUser.id]);
+
+    const handleJoin = () => {
+        if (!inputCode.trim()) return;
+        const match = exams.find(e => e.examCode === inputCode.trim().toUpperCase() && e.isActive);
+        if (match) {
+            setError('');
+            setSelectedExamId(match.id);
+        } else {
+            setError('Kode ujian tidak valid atau ujian belum dimulai.');
+        }
+    };
+
+    if (selectedExamId) {
+        const examObj = exams.find(e => e.id === selectedExamId);
+        if (!examObj) return <div className="p-10 text-center">Ujian tidak ditemukan. <button onClick={()=>setSelectedExamId(null)} className="text-blue-500 underline ml-2">Kembali</button></div>;
+        
+        return <StudentExam
+            questions={questions}
+            activeExam={examObj}
+            currentUser={currentUser}
+            onLogout={onLogout}
+            results={results}
+            onBack={() => { setSelectedExamId(null); setInputCode(''); }}
+        />;
+    }
+
+    return (
+        <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 relative">
+            <div className="absolute top-4 right-4 flex gap-4">
+                <button onClick={toggleFullScreen} className="p-2 bg-white border border-gray-200 shadow-sm rounded-full hover:bg-gray-100 text-gray-600"><Maximize size={20}/></button>
+                <button onClick={onLogout} className="px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 font-bold text-sm shadow-sm transition">Keluar</button>
+            </div>
+            
+            <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border">
+                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+                    <Key className="w-10 h-10 text-blue-600" />
+                </div>
+                <h2 className="text-2xl font-bold mb-2 text-gray-800">Selamat Datang, {currentUser.name}</h2>
+                <p className="text-gray-500 mb-8 text-sm px-4">Silakan masukkan <strong>Kode Ujian (Token)</strong> untuk mulai mengerjakan soal.</p>
+                
+                <input
+                    type="text"
+                    value={inputCode}
+                    onChange={e => setInputCode(e.target.value.toUpperCase())}
+                    onKeyDown={e => e.key === 'Enter' && handleJoin()}
+                    placeholder="KODE UJIAN"
+                    className="w-full text-center text-3xl tracking-[0.2em] font-bold p-4 border-2 rounded-xl mb-4 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none uppercase transition-all"
+                />
+                
+                {error && (
+                    <div className="mb-4 text-red-600 bg-red-50 p-3 rounded-lg text-sm border border-red-100 flex items-center">
+                        <AlertCircle size={18} className="mr-2 shrink-0"/> {error}
+                    </div>
+                )}
+                
+                <button onClick={handleJoin} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-md mt-2 text-lg flex justify-center items-center">
+                    Mulai Ujian <ChevronRight size={20} className="ml-2"/>
+                </button>
+            </div>
+        </div>
+    );
+};
+
 // --- APP UTAMA ---
 export default function App() {
   useTailwind(); // Inject Tailwind otomatis
   
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    // Cek status login saat halaman pertama kali dimuat (mencegah logout saat refresh)
+    try {
+      const savedUser = localStorage.getItem('simase_user');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch(e) { return null; }
+  });
   const [firebaseUser, setFirebaseUser] = useState(null);
 
   useEffect(() => {
@@ -1855,17 +2200,35 @@ export default function App() {
   const { data: admins, loading: aLoading } = useFirestoreCollection('admins', firebaseUser);
   const { data: contributors, loading: cLoading } = useFirestoreCollection('contributors', firebaseUser);
   const { data: principals, loading: pLoading } = useFirestoreCollection('principals', firebaseUser);
+  const { data: settingsData, loading: setLoading } = useFirestoreCollection('settings', firebaseUser);
 
-  const loading = qLoading || eLoading || sLoading || aLoading || cLoading || pLoading;
+  const loading = qLoading || eLoading || sLoading || aLoading || cLoading || pLoading || setLoading;
+  const identity = (settingsData || []).find(s => s.id === 'identity') || {};
 
   const handleLogin = (role, userData) => {
-    setUser({ role, ...userData });
+    const newUser = { role, ...userData };
+    setUser(newUser);
+    // Simpan status login ke LocalStorage
+    localStorage.setItem('simase_user', JSON.stringify(newUser));
   };
 
-  const activeExam = exams.find(e => e.isActive);
+  const handleLogout = () => {
+    setUser(null);
+    // Hapus status login dari LocalStorage
+    localStorage.removeItem('simase_user');
+  };
 
   if (!user) return <LoginScreen onLogin={handleLogin} students={students} admins={admins} contributors={contributors} principals={principals} loading={loading} isAuthReady={!!firebaseUser} />;
   
+  if (loading) {
+      return (
+          <div className="h-screen flex flex-col items-center justify-center bg-gray-50">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mb-4"></div>
+              <p className="text-gray-500 font-medium">Memuat data dari server...</p>
+          </div>
+      );
+  }
+
   // Render Dashboard Admin untuk Admin (Full) atau Contributor (Limited) atau Principal (Monitoring)
   if (user.role === 'admin' || user.role === 'contributor' || user.role === 'principal') return <AdminDashboard 
     questions={questions} 
@@ -1873,16 +2236,17 @@ export default function App() {
     students={students} 
     results={results}
     contributors={contributors}
-    principals={principals} // Pass principals to AdminDashboard
-    onLogout={() => setUser(null)} 
+    principals={principals}
+    identity={identity}
+    onLogout={handleLogout} 
     userRole={user.role} 
   />;
 
-  if (user.role === 'student') return <StudentExam 
+  if (user.role === 'student') return <StudentDashboard 
     questions={questions} 
-    activeExam={activeExam}
+    exams={exams}
     currentUser={user}
-    onLogout={() => setUser(null)}
+    onLogout={handleLogout}
     results={results}
   />;
 }
