@@ -15,7 +15,8 @@ import {
 import { 
   getAuth, 
   signInAnonymously, 
-  onAuthStateChanged 
+  onAuthStateChanged,
+  signInWithCustomToken
 } from 'firebase/auth'; 
 
 // --- DEFINISI IKON LOKAL ---
@@ -63,7 +64,7 @@ const StopHand = (p) => <IconWrapper {...p}><circle cx="12" cy="12" r="10"/><pat
 const Building = (p) => <IconWrapper {...p}><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></IconWrapper>;
 
 // --- KONFIGURASI FIREBASE ---
-const firebaseConfig = {
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
   apiKey: "AIzaSyBSffScL6JuDPtrJJ7aKrUxdOCRoyX7aBg",
   authDomain: "si-mase.firebaseapp.com",
   projectId: "si-mase",
@@ -1600,7 +1601,7 @@ const AdminDashboard = ({
   );
 };
 
-// --- SISWA (DILENGKAPI LOCKDOWN FULLSCREEN) ---
+// --- SISWA (DILENGKAPI LOCKDOWN FULLSCREEN & AUTO RESTORE) ---
 const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, onBack }) => {
   const [processedQuestions, setProcessedQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -1615,6 +1616,7 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
   const [attemptError, setAttemptError] = useState(null); 
   
   // STATE KEAMANAN
+  const [isFullscreen, setIsFullscreen] = useState(true);
   const [isViolating, setIsViolating] = useState(false);
 
   // EFFECT 1: Check Attempts
@@ -1635,7 +1637,7 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
     }
   }, [activeExam?.id, currentUser?.id, results.length]); 
 
-  // EFFECT 2: Initialization
+  // EFFECT 2: Initialization & Restoration
   useEffect(() => {
     if(!activeExam || sessionError || attemptError) return;
 
@@ -1655,72 +1657,73 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
     }
 
     if (activeExam && questions.length > 0) {
-      if (processedQuestions.length > 0) return;
+      if (processedQuestions.length > 0) return; // Cegah re-inisialisasi jika sudah ada
 
       const storageKey = `exam_data_${currentUser.id}_${activeExam.id}`;
       const savedDataStr = localStorage.getItem(storageKey);
-      let currentSessionId;
 
+      // 1. Coba pulihkan data dari Local Storage terlebih dahulu
       if (savedDataStr) {
           try {
               const savedData = JSON.parse(savedDataStr);
-              setProcessedQuestions(savedData.processedQuestions);
-              setAnswers(savedData.answers || {});
-              setRaguRagu(savedData.raguRagu || {});
-              setTimeLeft(savedData.timeLeft);
-              currentSessionId = savedData.resultId;
-              setResultId(currentSessionId);
+              // Pastikan data yang tersimpan valid dan tidak kosong
+              if (savedData.processedQuestions && savedData.processedQuestions.length > 0) {
+                  setProcessedQuestions(savedData.processedQuestions);
+                  setAnswers(savedData.answers || {});
+                  setRaguRagu(savedData.raguRagu || {});
+                  setTimeLeft(savedData.timeLeft);
+                  setResultId(savedData.resultId || `${activeExam.id}_${currentUser.id}_${Date.now()}`);
+                  return; // SUCCESSFUL RESTORE: Keluar dari useEffect ini, jangan timpa datanya!
+              }
           } catch (e) { console.error("Gagal memulihkan data ujian:", e); }
       }
 
-      if (!currentSessionId) {
-        let qList = questions.filter(q => activeExam.questionIds.includes(q.id));
-        if (activeExam.randomizeQuestions) qList = shuffleArray(qList);
-        
-        if (activeExam.randomizeOptions) {
-          qList = qList.map(q => {
-            if (q.type === 'single' || q.type === 'multiple') {
-              return {...q, options: shuffleArray([...q.options])};
-            }
-            return q;
-          });
-        }
-        setProcessedQuestions(qList); 
-        const initialTime = activeExam.duration * 60;
-        setTimeLeft(initialTime);
-        
-        currentSessionId = `${activeExam.id}_${currentUser.id}_${Date.now()}`;
-        setResultId(currentSessionId);
-
-        localStorage.setItem(storageKey, JSON.stringify({
-            processedQuestions: qList,
-            answers: {},
-            raguRagu: {},
-            timeLeft: initialTime,
-            resultId: currentSessionId
-        }));
-
-        const resultData = {
-          examId: activeExam.id,
-          studentId: currentUser.id,
-          studentName: currentUser.name,
-          studentClass: currentUser.class || '-',
-          status: 'ongoing',
-          answeredCount: 0,
-          score: 0,
-          timestamp: new Date().toISOString()
-        };
-        
-        try {
-          setDoc(getDocRef('results', currentSessionId), resultData, { merge: true });
-        } catch (e) { console.error("Error init exam:", e); }
+      // 2. Jika tidak ada di penyimpanan, Buat Sesi Baru (FRESH START)
+      let qList = questions.filter(q => activeExam.questionIds.includes(q.id));
+      if (activeExam.randomizeQuestions) qList = shuffleArray(qList);
+      
+      if (activeExam.randomizeOptions) {
+        qList = qList.map(q => {
+          if (q.type === 'single' || q.type === 'multiple') {
+            return {...q, options: shuffleArray([...q.options])};
+          }
+          return q;
+        });
       }
+      setProcessedQuestions(qList); 
+      const initialTime = activeExam.duration * 60;
+      setTimeLeft(initialTime);
+      
+      const currentSessionId = `${activeExam.id}_${currentUser.id}_${Date.now()}`;
+      setResultId(currentSessionId);
+
+      localStorage.setItem(storageKey, JSON.stringify({
+          processedQuestions: qList,
+          answers: {},
+          raguRagu: {},
+          timeLeft: initialTime,
+          resultId: currentSessionId
+      }));
+
+      const resultData = {
+        examId: activeExam.id,
+        studentId: currentUser.id,
+        studentName: currentUser.name,
+        studentClass: currentUser.class || '-',
+        status: 'ongoing',
+        answeredCount: 0,
+        score: 0,
+        timestamp: new Date().toISOString()
+      };
+      
+      try {
+        setDoc(getDocRef('results', currentSessionId), resultData, { merge: true });
+      } catch (e) { console.error("Error init exam:", e); }
     }
   }, [activeExam?.id, questions, currentUser, sessionError, attemptError]);
 
   // EFFECT 3: Timer & Auto Submit
   useEffect(() => {
-    // Timer JANGAN berjalan jika siswa sedang melanggar (memilih opsi: biarkan timer berhenti saat melanggar atau tetap jalan. Di sini tetap jalan agar adil)
     if (timeLeft > 0 && !examFinished) {
       const timerId = setInterval(() => setTimeLeft(p => p - 1), 1000);
       return () => clearInterval(timerId);
@@ -1743,40 +1746,35 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
     }
   }, [answers, raguRagu, timeLeft, processedQuestions, resultId, activeExam, currentUser]);
 
-  // EFFECT 5: LOCKDOWN KEAMANAN (FULLSCREEN & TAB SWITCHING)
+  // EFFECT 5: TRACK FULLSCREEN
+  useEffect(() => {
+      const checkFs = () => setIsFullscreen(!!document.fullscreenElement);
+      // Pengecekan pertama kali (saat re-render setelah refresh)
+      checkFs();
+      document.addEventListener('fullscreenchange', checkFs);
+      return () => document.removeEventListener('fullscreenchange', checkFs);
+  }, []);
+
+  // EFFECT 6: TRACK PELANGGARAN (TAB SWITCH & BLUR)
   useEffect(() => {
     if (!activeExam || examFinished) return;
 
-    const handleFullscreenChange = () => {
-      // Jika mendeteksi tidak dalam mode layar penuh, aktifkan status pelanggaran
-      if (!document.fullscreenElement) {
-        setIsViolating(true);
-      } else {
-        setIsViolating(false);
-      }
-    };
-
     const handleVisibilityChange = () => {
       // Jika pengguna berpindah tab atau mengecilkan browser
-      if (document.hidden) {
-        setIsViolating(true);
-      }
+      if (document.hidden) setIsViolating(true);
     };
 
-    // Pengecekan inisial (diberi jeda agar animasi fullscreen saat login selesai dulu)
-    const initialCheck = setTimeout(() => {
-      if (!document.fullscreenElement) {
-        setIsViolating(true);
-      }
-    }, 500);
+    const handleWindowBlur = () => {
+      // Jika pengguna mengklik aplikasi lain di luar jendela browser ini
+      setIsViolating(true);
+    };
 
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
 
     return () => {
-      clearTimeout(initialCheck);
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
     };
   }, [activeExam, examFinished]);
 
@@ -1871,8 +1869,8 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
                 <div className="text-xs text-gray-400 mb-6 bg-gray-100 p-3 rounded">
                     Anda tidak diizinkan mengulang ujian ini lagi.
                 </div>
-                <button onClick={onBack} className="w-full px-6 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg transition font-medium">
-                    Kembali ke Beranda
+                <button onClick={onLogout} className="w-full px-6 py-3 bg-red-600 hover:bg-red-700 text-white flex justify-center items-center rounded-lg transition font-bold">
+                    <LogOut size={20} className="mr-2" /> Keluar Aplikasi
                 </button>
             </div>
         </div>
@@ -1899,7 +1897,7 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
       );
   }
 
-  if (processedQuestions.length === 0) return <div className="h-screen flex items-center justify-center">Loading ujian...</div>;
+  if (processedQuestions.length === 0) return <div className="h-screen flex items-center justify-center bg-gray-50 text-gray-600 font-medium">Memuat Soal...</div>;
 
   if (examFinished) {
     return (
@@ -1909,13 +1907,15 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
           <h2 className="text-2xl font-bold mb-2">Ujian Selesai!</h2>
           <p className="text-gray-500 mb-4">Terima kasih, {currentUser.name}.</p>
           <div className="bg-blue-50 p-6 rounded mb-6"><span className="text-sm font-bold text-blue-600 uppercase">Nilai Akhir</span><div className="text-5xl font-bold text-blue-800 mt-2">{score.toFixed(1)}</div></div>
-          <button onClick={onBack} className="w-full bg-gray-800 hover:bg-gray-900 text-white py-3 rounded font-bold transition">Kembali ke Beranda</button>
+          <button onClick={onLogout} className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded font-bold transition flex items-center justify-center">
+             <LogOut size={20} className="mr-2" /> Keluar Aplikasi
+          </button>
         </div>
       </div>
     );
   }
 
-  // TAMPILAN LOCKDOWN (Jika siswa keluar fullscreen atau pindah tab)
+  // TAMPILAN LOCKDOWN PELANGGARAN MERAH (Pindah Tab / Buka Aplikasi Lain)
   if (isViolating && !examFinished) {
     return (
         <div className="h-screen flex flex-col items-center justify-center bg-gray-900 p-4 z-50 fixed inset-0">
@@ -1923,19 +1923,40 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
                 <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <AlertCircle className="w-10 h-10 text-red-600" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">Aplikasi Terkunci!</h2>
-                <p className="text-gray-600 mb-6">Anda terdeteksi keluar dari layar penuh atau membuka aplikasi/tab lain. <br/><br/><strong>Ujian tidak dapat dilanjutkan sebelum Anda kembali.</strong></p>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Pelanggaran Terdeteksi!</h2>
+                <p className="text-gray-600 mb-6">Anda terdeteksi membuka tab lain atau beralih ke aplikasi lain di luar area ujian. <br/><br/><strong>Harap berfokus pada halaman ini.</strong></p>
                 <button
                     onClick={() => {
                         document.documentElement.requestFullscreen().then(() => {
                             setIsViolating(false);
-                        }).catch(e => {
-                            alert("Browser Anda menolak untuk masuk ke layar penuh.");
-                        });
+                        }).catch(e => setIsViolating(false));
                     }}
                     className="w-full px-6 py-4 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition flex justify-center items-center text-lg shadow-lg hover:shadow-xl"
                 >
-                    <Maximize size={24} className="mr-2" /> Kembali ke Layar Penuh
+                    <Maximize size={24} className="mr-2" /> Kembali ke Ujian
+                </button>
+            </div>
+        </div>
+    );
+  }
+
+  // TAMPILAN NETRAL UNTUK REFRESH (Karena browser mematikan fullscreen saat direfresh)
+  if (!isFullscreen && !examFinished) {
+    return (
+        <div className="h-screen flex flex-col items-center justify-center bg-gray-900 p-4 z-50 fixed inset-0 backdrop-blur-sm bg-opacity-95">
+            <div className="bg-white p-8 rounded-xl shadow-2xl text-center max-w-md w-full border-t-8 border-blue-600">
+                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Maximize className="w-10 h-10 text-blue-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Layar Penuh Diperlukan</h2>
+                <p className="text-gray-600 mb-6">Ujian harus dikerjakan dalam mode layar penuh (Fullscreen). Hal ini juga biasa muncul apabila Anda me-refresh halaman.<br/><br/>Klik tombol di bawah untuk melanjutkan.</p>
+                <button
+                    onClick={() => {
+                        document.documentElement.requestFullscreen().catch(e => console.log("Perlu izin pengguna"));
+                    }}
+                    className="w-full px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition flex justify-center items-center text-lg shadow-lg hover:shadow-xl"
+                >
+                    <Maximize size={24} className="mr-2" /> Lanjutkan Ujian
                 </button>
             </div>
         </div>
@@ -2094,15 +2115,39 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
 
 // --- STUDENT DASHBOARD (KODE UJIAN) ---
 const StudentDashboard = ({ questions, exams, currentUser, onLogout, results }) => {
-    const [selectedExamId, setSelectedExamId] = useState(null);
+    // Membaca local storage secara sinkron pada saat komponen pertama kali diinisialisasi
+    // Hal ini berguna untuk mem-bypass splash screen seketika saat halamannya di-refresh
+    const [selectedExamId, setSelectedExamId] = useState(() => {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith(`exam_data_${currentUser.id}_`)) {
+                const examId = key.split('_')[3]; // mendapatkan id ujian
+                // Validasi: Pastikan ujian yang di-resume ini MASIH AKTIF
+                const match = exams.find(e => e.id === examId);
+                if (match && match.isActive) {
+                    return examId;
+                }
+            }
+        }
+        return null;
+    });
+    
     const [inputCode, setInputCode] = useState('');
     const [error, setError] = useState('');
 
-    // Cek apakah ada ujian yang sedang berlangsung (supaya langsung di-redirect ke soal jika reload)
+    // Fallback Cek Firebase (Hanya jika belum ketemu di local storage)
     useEffect(() => {
-        const ongoing = results.find(r => r.studentId === currentUser.id && r.status === 'ongoing');
-        if (ongoing) setSelectedExamId(ongoing.examId);
-    }, [results, currentUser.id]);
+        if (!selectedExamId) {
+            const ongoing = results.find(r => r.studentId === currentUser.id && r.status === 'ongoing');
+            if (ongoing) {
+                // Validasi: Pastikan ujian yang di-resume ini MASIH AKTIF
+                const match = exams.find(e => e.id === ongoing.examId);
+                if (match && match.isActive) {
+                    setSelectedExamId(ongoing.examId);
+                }
+            }
+        }
+    }, [results, currentUser.id, selectedExamId, exams]);
 
     const handleJoin = () => {
         if (!inputCode.trim()) return;
@@ -2182,15 +2227,21 @@ export default function App() {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        await signInAnonymously(auth);
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
       } catch (error) {
         console.error("Auth Error:", error);
       }
     };
     initAuth();
-    return onAuthStateChanged(auth, (user) => {
+    
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       setFirebaseUser(user);
     });
+    return () => unsubscribe();
   }, []);
 
   const { data: questions, loading: qLoading } = useFirestoreCollection('questions', firebaseUser);
