@@ -1008,6 +1008,9 @@ const AdminDashboard = ({
   const [examView, setExamView] = useState('list');
   const fileInputRef = useRef(null);
 
+  const [examQCategoryFilter, setExamQCategoryFilter] = useState('Semua');
+  const [examQSearch, setExamQSearch] = useState('');
+
   const [isEditingQ, setIsEditingQ] = useState(false);
   const [qForm, setQForm] = useState(null);
   const [examForm, setExamForm] = useState({ title: '', examCode: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false, allowedSessions: ['1', '2', '3', '4'], allowedClasses: [], maxAttempts: 1 });
@@ -1087,6 +1090,8 @@ const AdminDashboard = ({
   const openExamForm = (e=null) => { 
     setExamForm(e ? {...e, allowedClasses: e.allowedClasses || []} : { title: '', examCode: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false, allowedSessions: ['1', '2', '3', '4'], allowedClasses: [], maxAttempts: 1 }); 
     setExamView('form'); 
+    setExamQCategoryFilter('Semua');
+    setExamQSearch('');
   };
   const handleSaveExam = async () => { 
     if(!examForm.title || !examForm.examCode) return alert("Nama dan Kode ujian wajib diisi!");
@@ -1114,6 +1119,12 @@ const AdminDashboard = ({
       const c = examForm.allowedClasses || [];
       setExamForm({...examForm, allowedClasses: c.includes(cls) ? c.filter(id=>id!==cls) : [...c, cls]});
   };
+
+  const availableQuestionsForExam = questions.filter(q => {
+      const matchCat = examQCategoryFilter === 'Semua' || q.category === examQCategoryFilter;
+      const matchSearch = (q.question || '').toLowerCase().includes(examQSearch.toLowerCase());
+      return matchCat && matchSearch;
+  });
 
   const handleSaveStudent = async () => {
     if(!studentForm.username) return alert("Username wajib diisi!");
@@ -1408,17 +1419,28 @@ const AdminDashboard = ({
                    </div>
                 </div>
                 <div className="border-t pt-4">
-                   <div className="flex justify-between mb-2"><p className="font-bold">Pilih Soal:</p><span className="text-xs text-gray-400">{examForm.questionIds.length} terpilih</span></div>
-                   <div className="max-h-60 overflow-y-auto border rounded divide-y">
-                     {questions.map((q,i)=>(
-                       <div key={q.id} onClick={()=>toggleQuestionSelection(q.id)} className={`p-2 flex items-center cursor-pointer hover:bg-gray-50 ${examForm.questionIds.includes(q.id)?'bg-blue-50':''}`}>
-                         <input type="checkbox" checked={examForm.questionIds.includes(q.id)} readOnly className="mr-3"/> 
-                         <div className="overflow-hidden">
-                           <span className="text-xs font-bold text-gray-500 mr-2">[{q.category}]</span>
-                           <span className="text-sm truncate">{q.question}</span>
+                   <div className="flex justify-between items-center mb-3"><p className="font-bold">Pilih Soal:</p><span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-bold">{examForm.questionIds.length} terpilih</span></div>
+                   
+                   <div className="flex gap-2 mb-3">
+                       <select value={examQCategoryFilter} onChange={e=>setExamQCategoryFilter(e.target.value)} className="border p-2 rounded text-sm w-1/3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                           {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                       </select>
+                       <input type="text" placeholder="Cari cuplikan soal..." value={examQSearch} onChange={e=>setExamQSearch(e.target.value)} className="border p-2 rounded text-sm w-2/3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none"/>
+                   </div>
+
+                   <div className="max-h-72 overflow-y-auto border rounded divide-y bg-gray-50">
+                     {availableQuestionsForExam.map((q,i)=>(
+                       <div key={q.id} onClick={()=>toggleQuestionSelection(q.id)} className={`p-3 flex items-start cursor-pointer hover:bg-blue-50 transition-colors ${examForm.questionIds.includes(q.id)?'bg-blue-50 border-l-4 border-blue-500':'bg-white border-l-4 border-transparent'}`}>
+                         <input type="checkbox" checked={examForm.questionIds.includes(q.id)} readOnly className="mr-3 mt-1 w-4 h-4 accent-blue-600 cursor-pointer"/> 
+                         <div className="overflow-hidden flex-1">
+                           <span className="text-xs font-bold text-gray-500 mr-2 border px-1.5 py-0.5 rounded bg-gray-100">[{q.category}]</span>
+                           <span className="text-sm text-gray-800 line-clamp-2 mt-1">{q.question}</span>
                          </div>
                        </div>
                      ))}
+                     {availableQuestionsForExam.length === 0 && (
+                         <div className="p-6 text-center text-sm text-gray-400 italic">Tidak ada soal yang sesuai dengan filter.</div>
+                     )}
                    </div>
                 </div>
                 <div className="mt-4 flex justify-end gap-2"><button onClick={()=>setExamView('list')} className="px-4 py-2 border rounded">Batal</button><button onClick={handleSaveExam} className="px-4 py-2 bg-blue-600 text-white rounded">Simpan</button></div>
@@ -1966,6 +1988,13 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
   const currentQuestion = processedQuestions[currentQuestionIndex];
   const currentAns = answers[currentQuestion.id];
 
+  // Pengecekan apakah soal ini memiliki stimulus yang valid untuk ditampilkan
+  const hasStimulus = currentQuestion?.stimulus && (
+      (currentQuestion.stimulus.title && currentQuestion.stimulus.title.trim() !== '') ||
+      (currentQuestion.stimulus.content && currentQuestion.stimulus.content.trim() !== '') ||
+      (currentQuestion.stimulus.image && currentQuestion.stimulus.image.trim() !== '')
+  );
+
   return (
     // Gunakan h-[100dvh] untuk mobile browser (address bar issue)
     <div className="flex flex-col h-screen h-[100dvh] bg-gray-100 font-sans text-gray-800 overflow-hidden">
@@ -1985,21 +2014,26 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
 
       <div className="flex flex-1 overflow-hidden relative">
         <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
-          {/* Stimulus Section (Kiri/Atas) */}
-          <div className="md:w-1/2 w-full h-1/2 md:h-full overflow-y-auto border-r bg-white p-6">
-              <div className="max-w-3xl mx-auto">
-                  <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full mb-4 inline-block">{currentQuestion.category}</span>
-                  <h2 className="text-xl font-bold mb-4">{currentQuestion.stimulus.title}</h2>
-                  {currentQuestion.stimulus.image && (<div className="mb-4 rounded-lg overflow-hidden border"><img src={getOptimizedImageUrl(currentQuestion.stimulus.image)} className="w-full h-auto" alt="Stimulus"/></div>)}
-                  <div className="prose prose-blue text-gray-700 leading-relaxed text-lg"><FormattedText text={currentQuestion.stimulus.content}/></div>
-              </div>
-          </div>
+          {/* Stimulus Section (Kiri/Atas) - Hanya tampil jika ada stimulus */}
+          {hasStimulus && (
+            <div className="md:w-1/2 w-full h-1/2 md:h-full overflow-y-auto border-r bg-white p-6">
+                <div className="max-w-3xl mx-auto">
+                    {currentQuestion.category && <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full mb-4 inline-block">{currentQuestion.category}</span>}
+                    {currentQuestion.stimulus.title && <h2 className="text-xl font-bold mb-4">{currentQuestion.stimulus.title}</h2>}
+                    {currentQuestion.stimulus.image && (<div className="mb-4 rounded-lg overflow-hidden border"><img src={getOptimizedImageUrl(currentQuestion.stimulus.image)} className="w-full h-auto" alt="Stimulus"/></div>)}
+                    {currentQuestion.stimulus.content && <div className="prose prose-blue text-gray-700 leading-relaxed text-lg"><FormattedText text={currentQuestion.stimulus.content}/></div>}
+                </div>
+            </div>
+          )}
 
-          {/* Soal Section (Kanan/Bawah) */}
-          <div className="md:w-1/2 w-full h-1/2 md:h-full overflow-y-auto bg-[#f7fafc] p-6">
-              <div className="max-w-2xl mx-auto pb-20">
+          {/* Soal Section (Kanan/Bawah) - Melebar penuh jika stimulus kosong */}
+          <div className={`${hasStimulus ? 'md:w-1/2 h-1/2 md:h-full' : 'w-full h-full'} w-full overflow-y-auto bg-[#f7fafc] p-6`}>
+              <div className={`${hasStimulus ? 'max-w-2xl' : 'max-w-4xl'} mx-auto pb-20`}>
                   <div className="flex justify-between items-start mb-4">
-                      <span className="text-sm font-medium text-gray-500">Soal No. {currentQuestionIndex + 1}</span>
+                      <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-500">Soal No. {currentQuestionIndex + 1}</span>
+                          {!hasStimulus && currentQuestion.category && <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">{currentQuestion.category}</span>}
+                      </div>
                       <span className="text-xs px-2 py-1 rounded bg-gray-200 uppercase">{currentQuestion.type.replace('_', ' ')}</span>
                   </div>
                   <div className="text-lg font-medium mb-6"><FormattedText text={currentQuestion.question}/></div>
