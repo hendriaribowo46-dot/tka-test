@@ -644,6 +644,7 @@ const MonitoringView = ({ exams, results, students, identity }) => {
             status: res ? res.status : 'not_started',
             score: res && res.score !== undefined ? res.score : -1, // -1 agar bisa sort yg belum ada nilai
             answeredCount: res ? res.answeredCount : 0,
+            totalQuestions: res?.totalQuestions || activeExam.maxQuestionsToDisplay || (activeExam.questionIds || []).length,
             resultId: res ? res.id : null
         };
     });
@@ -744,7 +745,7 @@ const MonitoringView = ({ exams, results, students, identity }) => {
             </thead>
             <tbody className="divide-y">
               {sortedData.map(s => {
-                const total = (activeExam.questionIds || []).length; 
+                const total = s.totalQuestions || 1; 
                 const percent = total > 0 ? (s.answeredCount / total) * 100 : 0;
                 
                 return (
@@ -1039,7 +1040,7 @@ const AdminDashboard = ({
   const [expandedQId, setExpandedQId] = useState(null); // State baru untuk melacak soal mana yang sedang dibuka/di-expand
   const [isEditingQ, setIsEditingQ] = useState(false);
   const [qForm, setQForm] = useState(null);
-  const [examForm, setExamForm] = useState({ title: '', examCode: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false, allowedSessions: ['1', '2', '3', '4'], allowedClasses: [], maxAttempts: 1 });
+  const [examForm, setExamForm] = useState({ title: '', examCode: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false, allowedSessions: ['1', '2', '3', '4'], allowedClasses: [], maxAttempts: 1, maxQuestionsToDisplay: 0, showScoreOnFinish: true });
   const [isEditingStudent, setIsEditingStudent] = useState(false);
   const [studentForm, setStudentForm] = useState({ name: '', username: '', password: '', class: '', session: '1', isActive: true });
   const [identitasForm, setIdentitasForm] = useState({ namaSekolah: '', alamat: '', tahunPelajaran: '', semester: 'Ganjil', kepalaSekolah: '', nip: '' });
@@ -1135,7 +1136,7 @@ const AdminDashboard = ({
   };
 
   const openExamForm = (e=null) => { 
-    setExamForm(e ? {...e, allowedClasses: e.allowedClasses || []} : { title: '', examCode: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false, allowedSessions: ['1', '2', '3', '4'], allowedClasses: [], maxAttempts: 1 }); 
+    setExamForm(e ? {...e, allowedClasses: e.allowedClasses || [], maxQuestionsToDisplay: e.maxQuestionsToDisplay || 0, showScoreOnFinish: e.showScoreOnFinish !== false} : { title: '', examCode: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false, allowedSessions: ['1', '2', '3', '4'], allowedClasses: [], maxAttempts: 1, maxQuestionsToDisplay: 0, showScoreOnFinish: true }); 
     setExamView('form'); 
     setExamQCategoryFilter('Semua');
     setExamQSubjectFilter('Semua');
@@ -1672,9 +1673,15 @@ const AdminDashboard = ({
                           <label className="block text-sm font-medium text-gray-700 mb-1">Durasi (Menit)</label>
                           <input type="number" value={examForm.duration} onChange={e=>setExamForm({...examForm, duration:parseInt(e.target.value)})} className="border p-2 rounded w-full" placeholder="Durasi (menit)"/>
                        </div>
-                       <div className="flex gap-4">
-                         <label className="flex items-center"><input type="checkbox" checked={examForm.randomizeQuestions} onChange={e=>setExamForm({...examForm, randomizeQuestions:e.target.checked})} className="mr-2"/> Acak Soal</label>
-                         <label className="flex items-center"><input type="checkbox" checked={examForm.randomizeOptions} onChange={e=>setExamForm({...examForm, randomizeOptions:e.target.checked})} className="mr-2"/> Acak Opsi</label>
+                       <div>
+                           <label className="block text-sm font-medium text-gray-700 mb-1">Tampilkan Sebagian Soal (Bank Acak)</label>
+                           <input type="number" min="0" value={examForm.maxQuestionsToDisplay || ''} onChange={e=>setExamForm({...examForm, maxQuestionsToDisplay:parseInt(e.target.value) || 0})} className="border p-2 rounded w-full" placeholder="Kosongkan untuk tampilkan semua"/>
+                           <p className="text-xs text-gray-400 mt-1">Isi angka (misal: 20) untuk mengacak 20 soal dari total soal yang dicentang. Biarkan kosong jika ingin menampilkan semua soal.</p>
+                       </div>
+                       <div className="flex gap-4 flex-wrap">
+                         <label className="flex items-center"><input type="checkbox" checked={examForm.randomizeQuestions} onChange={e=>setExamForm({...examForm, randomizeQuestions:e.target.checked})} className="mr-2 accent-blue-600"/> Acak Soal</label>
+                         <label className="flex items-center"><input type="checkbox" checked={examForm.randomizeOptions} onChange={e=>setExamForm({...examForm, randomizeOptions:e.target.checked})} className="mr-2 accent-blue-600"/> Acak Opsi</label>
+                         <label className="flex items-center"><input type="checkbox" checked={examForm.showScoreOnFinish !== false} onChange={e=>setExamForm({...examForm, showScoreOnFinish:e.target.checked})} className="mr-2 accent-blue-600"/> Tampilkan Nilai Akhir ke Siswa</label>
                        </div>
                        <div>
                            <label className="block text-sm font-medium text-gray-700 mb-1">Batasan Mengerjakan (Kali)</label>
@@ -1760,7 +1767,7 @@ const AdminDashboard = ({
           ) : (
             <>
               <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold">Daftar Paket</h2><button onClick={() => openExamForm()} className="bg-green-600 text-white px-4 py-2 rounded flex items-center"><Plus size={18} className="mr-2"/> Buat Baru</button></div>
-              <div className="grid gap-4">{exams.map((exam) => {const isActive = exam.isActive; return (<div key={exam.id} className={`bg-white p-6 rounded-lg border-2 ${isActive ? 'border-green-500 shadow-md' : 'border-gray-100'}`}><div className="flex justify-between items-start"><div><h3 className="font-bold text-lg">{exam.title} <span className="text-sm font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded border ml-2">Kode: <strong>{exam.examCode || '-'}</strong></span></h3>{isActive && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold mt-1 inline-block">AKTIF</span>}<p className="text-sm text-gray-500 mt-1">{exam.duration} Menit • {exam.questionIds.length} Soal • Sesi: {(exam.allowedSessions || []).join(', ')} • Max: {exam.maxAttempts || 1}x{(exam.allowedClasses && exam.allowedClasses.length > 0) ? ` • Kelas: ${exam.allowedClasses.join(', ')}` : ''}</p></div><div className="flex gap-2"><button onClick={() => toggleExamStatus(exam)} className={`px-3 py-1 rounded text-sm font-bold flex items-center ${isActive ? 'bg-red-100 text-red-700' : 'bg-gray-100 hover:bg-green-100 text-gray-700 hover:text-green-700'}`}>{isActive ? <><StopCircle size={14} className="mr-1"/> Stop</> : <><PlayCircle size={14} className="mr-1"/> Mulai</>}</button><button onClick={()=>openExamForm(exam)} className="p-2 text-blue-500"><Edit size={16}/></button><button onClick={()=>handleDeleteExam(exam.id)} className="p-2 text-red-500"><Trash2 size={16}/></button></div></div></div>);})}</div>
+              <div className="grid gap-4">{exams.map((exam) => {const isActive = exam.isActive; return (<div key={exam.id} className={`bg-white p-6 rounded-lg border-2 ${isActive ? 'border-green-500 shadow-md' : 'border-gray-100'}`}><div className="flex justify-between items-start"><div><h3 className="font-bold text-lg">{exam.title} <span className="text-sm font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded border ml-2">Kode: <strong>{exam.examCode || '-'}</strong></span></h3>{isActive && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold mt-1 inline-block">AKTIF</span>}<p className="text-sm text-gray-500 mt-1">{exam.duration} Menit • {exam.maxQuestionsToDisplay ? <span className="font-bold text-blue-600">{exam.maxQuestionsToDisplay} (dari {exam.questionIds.length})</span> : exam.questionIds.length} Soal • Sesi: {(exam.allowedSessions || []).join(', ')} • Max: {exam.maxAttempts || 1}x{(exam.allowedClasses && exam.allowedClasses.length > 0) ? ` • Kelas: ${exam.allowedClasses.join(', ')}` : ''}</p></div><div className="flex gap-2"><button onClick={() => toggleExamStatus(exam)} className={`px-3 py-1 rounded text-sm font-bold flex items-center ${isActive ? 'bg-red-100 text-red-700' : 'bg-gray-100 hover:bg-green-100 text-gray-700 hover:text-green-700'}`}>{isActive ? <><StopCircle size={14} className="mr-1"/> Stop</> : <><PlayCircle size={14} className="mr-1"/> Mulai</>}</button><button onClick={()=>openExamForm(exam)} className="p-2 text-blue-500"><Edit size={16}/></button><button onClick={()=>handleDeleteExam(exam.id)} className="p-2 text-red-500"><Trash2 size={16}/></button></div></div></div>);})}</div>
             </>
         ))}
         {activeTab === 'students' && !isContributor && !isPrincipal && (isEditingStudent ? (
@@ -2027,7 +2034,19 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
 
       // 2. Jika tidak ada di penyimpanan, Buat Sesi Baru (FRESH START)
       let qList = questions.filter(q => activeExam.questionIds.includes(q.id));
-      if (activeExam.randomizeQuestions) qList = shuffleArray(qList);
+      
+      const displayCount = parseInt(activeExam.maxQuestionsToDisplay) || 0;
+      const needsRandomSubset = displayCount > 0 && displayCount < qList.length;
+
+      // Jika diset acak soal ATAU jika butuh mengambil sebagian soal secara acak
+      if (activeExam.randomizeQuestions || needsRandomSubset) {
+          qList = shuffleArray(qList);
+      }
+
+      // Potong daftar soal sesuai batas maksimal yang diminta
+      if (needsRandomSubset) {
+          qList = qList.slice(0, displayCount);
+      }
       
       if (activeExam.randomizeOptions) {
         qList = qList.map(q => {
@@ -2059,6 +2078,7 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
         studentClass: currentUser.class || '-',
         status: 'ongoing',
         answeredCount: 0,
+        totalQuestions: qList.length,
         score: 0,
         timestamp: new Date().toISOString()
       };
@@ -2247,13 +2267,16 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
   if (processedQuestions.length === 0) return <div className="h-screen flex items-center justify-center bg-gray-50 text-gray-600 font-medium">Memuat Soal...</div>;
 
   if (examFinished) {
+    const showScore = activeExam.showScoreOnFinish !== false;
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white max-w-lg w-full rounded-xl shadow-lg p-8 text-center">
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4"/>
           <h2 className="text-2xl font-bold mb-2">Ujian Selesai!</h2>
-          <p className="text-gray-500 mb-4">Terima kasih, {currentUser.name}.</p>
-          <div className="bg-blue-50 p-6 rounded mb-6"><span className="text-sm font-bold text-blue-600 uppercase">Nilai Akhir</span><div className="text-5xl font-bold text-blue-800 mt-2">{score.toFixed(1)}</div></div>
+          <p className="text-gray-500 mb-4">Terima kasih, {currentUser.name}. {showScore ? '' : 'Jawaban Anda telah berhasil disimpan.'}</p>
+          {showScore && (
+             <div className="bg-blue-50 p-6 rounded mb-6"><span className="text-sm font-bold text-blue-600 uppercase">Nilai Akhir</span><div className="text-5xl font-bold text-blue-800 mt-2">{score.toFixed(1)}</div></div>
+          )}
           <button onClick={onLogout} className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded font-bold transition flex items-center justify-center">
              <LogOut size={20} className="mr-2" /> Keluar Aplikasi
           </button>
