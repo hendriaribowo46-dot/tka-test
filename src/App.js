@@ -64,6 +64,7 @@ const StopHand = (p) => <IconWrapper {...p}><circle cx="12" cy="12" r="10"/><pat
 const Building = (p) => <IconWrapper {...p}><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></IconWrapper>;
 const Tag = (p) => <IconWrapper {...p}><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" x2="7.01" y1="7" y2="7"/></IconWrapper>;
 const Book = (p) => <IconWrapper {...p}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></IconWrapper>;
+const IdCard = (p) => <IconWrapper {...p}><rect width="20" height="14" x="2" y="5" rx="2"/><circle cx="8" cy="12" r="2"/><path d="M14 10h4"/><path d="M14 14h4"/></IconWrapper>;
 
 // --- KONFIGURASI FIREBASE ---
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
@@ -95,11 +96,13 @@ const getDocRef = (colName, docId) => {
 const PrintStyles = () => (
   <style>{`
     @media print {
-      @page { margin: 2cm; size: A4; }
-      body { background: white !important; color: black !important; }
+      @page { margin: 1.2cm; size: A4; }
+      body { background: white !important; color: black !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .no-print, nav, header, footer, button { display: none !important; }
       .print-container { width: 100% !important; max-width: none !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important; }
       .print-card { box-shadow: none !important; border: 1px solid #ccc !important; break-inside: avoid; }
+      .exam-cards-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 12px !important; }
+      .exam-card-item { break-inside: avoid !important; page-break-inside: avoid !important; }
       table { width: 100% !important; border-collapse: collapse !important; font-size: 12px; }
       th, td { border: 1px solid #000 !important; padding: 8px !important; color: black !important; }
       thead { background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; }
@@ -511,7 +514,7 @@ const HistoryView = ({ results, exams, students, identity }) => {
   }
 
   const handleDeleteResult = async (id) => {
-    if (confirm("Hapus data riwayat ini secara permanen?")) {
+    if (window.confirm("Hapus data riwayat ini secara permanen?")) {
       await deleteDoc(getDocRef('results', id));
     }
   };
@@ -607,6 +610,7 @@ const HistoryView = ({ results, exams, students, identity }) => {
   );
 };
 
+// --- MONITORING VIEW ---
 const MonitoringView = ({ exams, results, students, identity }) => {
     const activeExams = exams.filter(e => e.isActive);
     const [selectedExamId, setSelectedExamId] = useState('');
@@ -780,6 +784,268 @@ const MonitoringView = ({ exams, results, students, identity }) => {
     );
 };
 
+// --- KARTU TES VIEW ---
+const ExamCardsView = ({ exams, students, identity, allClassesMaster, initialExamId }) => {
+  const [selectedExamId, setSelectedExamId] = useState(initialExamId || '');
+  const [filterClass, setFilterClass] = useState('Semua');
+  const [filterSession, setFilterSession] = useState('Semua');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [onlyEligible, setOnlyEligible] = useState(true);
+  const [showToken, setShowToken] = useState(true);
+  const [showSignature, setShowSignature] = useState(true);
+
+  useEffect(() => {
+    if (initialExamId) {
+      setSelectedExamId(initialExamId);
+    }
+  }, [initialExamId]);
+
+  useEffect(() => {
+    if (exams.length > 0 && !selectedExamId) {
+      setSelectedExamId(exams[0].id);
+    }
+  }, [exams, selectedExamId]);
+
+  const selectedExam = exams.find(e => e.id === selectedExamId);
+
+  // Filter peserta sesuai pengaturan ujian dan filter manual
+  const filteredStudents = students
+    .filter(s => s.isActive !== false)
+    .filter(s => {
+      if (onlyEligible && selectedExam) {
+        const allowedClasses = selectedExam.allowedClasses || [];
+        const allowedSessions = selectedExam.allowedSessions || [];
+        if (allowedClasses.length > 0 && !allowedClasses.includes(s.class)) return false;
+        if (allowedSessions.length > 0 && !allowedSessions.includes(s.session || '1')) return false;
+      }
+      if (filterClass !== 'Semua' && (s.class || '-') !== filterClass) return false;
+      if (filterSession !== 'Semua' && (s.session || '1') !== filterSession) return false;
+      if (searchQuery.trim() !== '') {
+        const q = searchQuery.toLowerCase();
+        const matchName = (s.name || '').toLowerCase().includes(q);
+        const matchUser = (s.username || '').toLowerCase().includes(q);
+        if (!matchName && !matchUser) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const clsCmp = (a.class || '').localeCompare(b.class || '');
+      if (clsCmp !== 0) return clsCmp;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
+  return (
+    <div className="space-y-6 print-container">
+      {/* Panel Kontrol (Disembunyikan saat mencetak) */}
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 no-print space-y-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+              <IdCard size={24} />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-800">Cetak Kartu Tes Peserta</h2>
+              <p className="text-sm text-gray-500">Pilih paket ujian untuk menyesuaikan judul dan informasi pada kartu.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => window.print()}
+            disabled={filteredStudents.length === 0}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-5 py-2.5 rounded-lg font-bold flex items-center shadow-sm transition"
+          >
+            <Printer size={18} className="mr-2" /> Cetak Kartu ({filteredStudents.length})
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="md:col-span-2">
+            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Pilih Paket Ujian (Judul Kartu)</label>
+            <select
+              value={selectedExamId}
+              onChange={e => setSelectedExamId(e.target.value)}
+              className="w-full border border-gray-300 p-2.5 rounded-lg bg-blue-50/40 font-semibold text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
+            >
+              {exams.length === 0 && <option value="">Belum ada paket ujian</option>}
+              {exams.map(ex => (
+                <option key={ex.id} value={ex.id}>
+                  {ex.title} (Kode: {ex.examCode || '-'})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Filter Kelas</label>
+            <select
+              value={filterClass}
+              onChange={e => setFilterClass(e.target.value)}
+              className="w-full border border-gray-300 p-2.5 rounded-lg bg-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            >
+              <option value="Semua">Semua Kelas</option>
+              {allClassesMaster.map(c => (
+                <option key={`card-cls-${c}`} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Filter Sesi</label>
+            <select
+              value={filterSession}
+              onChange={e => setFilterSession(e.target.value)}
+              className="w-full border border-gray-300 p-2.5 rounded-lg bg-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            >
+              <option value="Semua">Semua Sesi</option>
+              <option value="1">Sesi 1</option>
+              <option value="2">Sesi 2</option>
+              <option value="3">Sesi 3</option>
+              <option value="4">Sesi 4</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pt-2 border-t text-sm">
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center cursor-pointer select-none text-gray-700">
+              <input
+                type="checkbox"
+                checked={onlyEligible}
+                onChange={e => setOnlyEligible(e.target.checked)}
+                className="mr-2 w-4 h-4 accent-blue-600"
+              />
+              Sesuaikan kelas & sesi paket ujian
+            </label>
+            <label className="flex items-center cursor-pointer select-none text-gray-700">
+              <input
+                type="checkbox"
+                checked={showToken}
+                onChange={e => setShowToken(e.target.checked)}
+                className="mr-2 w-4 h-4 accent-blue-600"
+              />
+              Tampilkan Kode Ujian
+            </label>
+            <label className="flex items-center cursor-pointer select-none text-gray-700">
+              <input
+                type="checkbox"
+                checked={showSignature}
+                onChange={e => setShowSignature(e.target.checked)}
+                className="mr-2 w-4 h-4 accent-blue-600"
+              />
+              Tampilkan TTD Kepala Sekolah
+            </label>
+          </div>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Cari nama atau username..."
+            className="border border-gray-300 px-3 py-1.5 rounded-lg text-sm w-full md:w-64 outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+
+      {/* Area Preview & Cetak Kartu Tes (2 Kolom per baris A4) */}
+      {filteredStudents.length === 0 ? (
+        <div className="bg-white p-12 rounded-lg border text-center text-gray-400 no-print">
+          Tidak ada data peserta yang sesuai dengan filter atau aturan paket ujian ini.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 exam-cards-grid">
+          {filteredStudents.map((s) => (
+            <div
+              key={`card-${s.id}`}
+              className="exam-card-item border-2 border-dashed border-gray-400 p-1.5 rounded bg-white"
+            >
+              <div className="border-2 border-gray-800 h-full flex flex-col justify-between bg-white">
+                {/* Kop Kartu Tes */}
+                <div className="border-b-2 border-gray-800 px-3 py-2 text-center bg-gray-100">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-gray-600 leading-tight">
+                    {identity?.namaSekolah || 'NAMA SEKOLAH / INSTANSI'}
+                  </div>
+                  <div className="text-sm font-extrabold uppercase text-gray-900 mt-0.5 leading-snug">
+                    KARTU PESERTA {selectedExam ? selectedExam.title : 'UJIAN'}
+                  </div>
+                  {(identity?.tahunPelajaran || identity?.semester) && (
+                    <div className="text-[10px] text-gray-600 font-medium">
+                      Tahun Pelajaran {identity?.tahunPelajaran || '-'} • Semester {identity?.semester || '-'}
+                    </div>
+                  )}
+                </div>
+
+                {/* Isi Data Peserta */}
+                <div className="p-3 flex gap-3 items-start flex-1">
+                  {/* Kotak Pas Foto 3x4 */}
+                  <div className="w-16 h-20 border border-gray-400 bg-gray-50 flex flex-col items-center justify-center text-[9px] text-gray-400 shrink-0 select-none">
+                    <User size={20} className="mb-1 text-gray-300" />
+                    <span>FOTO</span>
+                    <span>3 x 4</span>
+                  </div>
+
+                  {/* Tabel Kredensial */}
+                  <div className="flex-1 text-xs space-y-1">
+                    <div className="flex">
+                      <span className="w-24 text-gray-600 shrink-0">Nama Peserta</span>
+                      <span className="mr-1.5">:</span>
+                      <span className="font-bold text-gray-900 uppercase">{s.name}</span>
+                    </div>
+                    <div className="flex">
+                      <span className="w-24 text-gray-600 shrink-0">Kelas / Sesi</span>
+                      <span className="mr-1.5">:</span>
+                      <span className="font-semibold text-gray-800">
+                        {s.class || '-'} / Sesi {s.session || '1'}
+                      </span>
+                    </div>
+                    <div className="flex items-center pt-1">
+                      <span className="w-24 text-gray-600 shrink-0">Username</span>
+                      <span className="mr-1.5">:</span>
+                      <span className="font-mono font-bold bg-gray-100 border border-gray-300 px-1.5 py-0.5 rounded text-gray-900">
+                        {s.username}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="w-24 text-gray-600 shrink-0">Password</span>
+                      <span className="mr-1.5">:</span>
+                      <span className="font-mono font-bold bg-gray-100 border border-gray-300 px-1.5 py-0.5 rounded text-gray-900">
+                        {s.password}
+                      </span>
+                    </div>
+                    {showToken && selectedExam && (
+                      <div className="flex items-center">
+                        <span className="w-24 text-gray-600 shrink-0">Kode Ujian</span>
+                        <span className="mr-1.5">:</span>
+                        <span className="font-mono font-bold bg-blue-50 border border-blue-300 text-blue-800 px-1.5 py-0.5 rounded">
+                          {selectedExam.examCode || '-'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer Kartu */}
+                <div className="px-3 py-1.5 border-t border-gray-300 bg-gray-50/60 flex justify-between items-end text-[10px]">
+                  <div className="text-gray-500 italic max-w-[55%] leading-tight">
+                    *Simpan kartu ini dengan baik dan jaga kerahasiaan akun Anda.
+                  </div>
+                  {showSignature && (
+                    <div className="text-center leading-tight">
+                      <div className="text-gray-600">Kepala Sekolah,</div>
+                      <div className="h-6"></div>
+                      <div className="font-bold underline text-gray-800">
+                        {identity?.kepalaSekolah || '____________________'}
+                      </div>
+                      {identity?.nip && <div className="text-[9px] text-gray-600">NIP. {identity.nip}</div>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // --- LOGIN SCREEN ---
 const LoginScreen = ({ onLogin, students, admins, contributors, principals, loading, isAuthReady }) => {
   const [view, setView] = useState('select');
@@ -920,7 +1186,6 @@ const LoginScreen = ({ onLogin, students, admins, contributors, principals, load
               {role === 'student' ? "Login Peserta Ujian" : (role === 'admin' ? (isRegistering ? "Buat Akun Admin Baru" : "Login Administrator") : (role === 'principal' ? "Login Kepala Sekolah" : "Login Kontributor"))}
             </p>
             
-            {/* Mengganti tag <form> menjadi <div> biasa dengan autoComplete="off" */}
             <div className="space-y-4 text-left">
               {role === 'admin' && isRegistering && (
                 <div>
@@ -987,7 +1252,6 @@ const LoginScreen = ({ onLogin, students, admins, contributors, principals, load
                 </div>
               )}
 
-              {/* Tombol dengan type="button" dan memanggil handleSubmit langsung */}
               <button type="button" onClick={handleSubmit} disabled={loading} className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition disabled:bg-gray-400">
                 {loading ? 'Memuat...' : (isRegistering ? 'Daftar' : 'Masuk')}
               </button>
@@ -1019,7 +1283,7 @@ const LoginScreen = ({ onLogin, students, admins, contributors, principals, load
 // --- ADMIN DASHBOARD ---
 const AdminDashboard = ({ 
   questions, exams, students, results, contributors, principals, identity, metadata,
-  onLogout, userRole 
+  onLogout, userRole, currentUser 
 }) => {
   const isPrincipal = userRole === 'principal';
   const isContributor = userRole === 'contributor';
@@ -1037,7 +1301,7 @@ const AdminDashboard = ({
   const [examQClassFilter, setExamQClassFilter] = useState('Semua');
   const [examQSearch, setExamQSearch] = useState('');
 
-  const [expandedQId, setExpandedQId] = useState(null); // State baru untuk melacak soal mana yang sedang dibuka/di-expand
+  const [expandedQId, setExpandedQId] = useState(null);
   const [isEditingQ, setIsEditingQ] = useState(false);
   const [qForm, setQForm] = useState(null);
   const [examForm, setExamForm] = useState({ title: '', examCode: '', duration: 60, questionIds: [], randomizeQuestions: false, randomizeOptions: false, isActive: false, allowedSessions: ['1', '2', '3', '4'], allowedClasses: [], maxAttempts: 1, maxQuestionsToDisplay: 0, showScoreOnFinish: true });
@@ -1045,6 +1309,7 @@ const AdminDashboard = ({
   const [studentForm, setStudentForm] = useState({ name: '', username: '', password: '', class: '', session: '1', isActive: true });
   const [identitasForm, setIdentitasForm] = useState({ namaSekolah: '', alamat: '', tahunPelajaran: '', semester: 'Ganjil', kepalaSekolah: '', nip: '' });
   const [studentClassFilter, setStudentClassFilter] = useState('Semua');
+  const [selectedCardExamId, setSelectedCardExamId] = useState('');
 
   useEffect(() => {
     if (identity) {
@@ -1077,7 +1342,6 @@ const AdminDashboard = ({
       const matchClass = classFilter === 'Semua' || (q.classLevel || 'Umum') === classFilter;
       return matchCat && matchSubj && matchClass;
   }).sort((a, b) => {
-      // Mengurutkan dari yang paling lama diinput hingga terbaru
       const timeA = a.createdAt || 0;
       const timeB = b.createdAt || 0;
       if (timeA === timeB) return a.id.localeCompare(b.id);
@@ -1121,7 +1385,6 @@ const AdminDashboard = ({
   };
   const handleDeleteQ = async (id) => { if(window.confirm('Hapus soal?')) await deleteDoc(getDocRef('questions', id)); };
   
-  // Modifikasi penyimpanan soal agar menambahkan createdAt
   const handleSaveQ = async () => { 
     if(!qForm.question) return alert("Pertanyaan wajib diisi!");
     if(!qForm.classLevel || !qForm.subject || !qForm.category) return alert("Kelas, Mata Pelajaran, dan Kategori wajib dipilih!");
@@ -1170,7 +1433,6 @@ const AdminDashboard = ({
       setExamForm({...examForm, allowedClasses: c.includes(cls) ? c.filter(id=>id!==cls) : [...c, cls]});
   };
 
-  // Modifikasi filter pilih soal di paket agar ikut mengurutkan berdasarkan createdAt
   const availableQuestionsForExam = questions.filter(q => {
       const matchCat = examQCategoryFilter === 'Semua' || q.category === examQCategoryFilter;
       const matchSubj = examQSubjectFilter === 'Semua' || (q.subject || 'Umum') === examQSubjectFilter;
@@ -1207,27 +1469,39 @@ const AdminDashboard = ({
       const lines = evt.target.result.split('\n');
       const batch = writeBatch(db);
       let count = 0;
-      lines.forEach((l,i) => {
-        const p = l.trim().split(',');
-        // CSV Format: Name,Username,Password,Class,Session
-        if(p.length>=3 && (i>0 || p[1].toLowerCase()!=='username') && !students.some(s=>s.username===p[1])) {
-          const newRef = doc(getCollectionRef('students'));
-          batch.set(newRef, { 
-            name: p[0], 
-            username: p[1], 
-            password: p[2],
-            class: p[3] ? p[3].trim() : '-',
-            session: p[4] ? p[4].trim() : '1',
-            isActive: true
-          });
-          count++;
+      let skipped = 0;
+      
+      lines.forEach((l, i) => {
+        const p = l.split(',').map(item => item.trim());
+        
+        if (!p[0]) return;
+        
+        if (i === 0 && (p[0].toLowerCase().includes('nama') || (p[2] && p[2].toLowerCase().includes('username')))) return;
+
+        // FORMAT: 0:Nama, 1:Kelas, 2:Username, 3:Password, 4:Sesi
+        if(p.length >= 3 && p[2]) { 
+          if(!students.some(s => s.username === p[2])) {
+            const newRef = doc(getCollectionRef('students'));
+            batch.set(newRef, { 
+              name: p[0] || 'Tanpa Nama', 
+              class: p[1] || '-',
+              username: p[2], 
+              password: p[3] || '123456',
+              session: p[4] || '1',
+              isActive: true
+            });
+            count++;
+          } else {
+            skipped++;
+          }
         }
       });
+      
       if(count > 0) {
         await batch.commit();
-        alert(`Berhasil mengimpor ${count} siswa.`);
+        alert(`Berhasil mengimpor ${count} data siswa. ${skipped > 0 ? `(${skipped} data dilewati karena username sudah dipakai)` : ''}`);
       } else {
-        alert("Tidak ada data valid atau semua username duplikat.");
+        alert("Tidak ada data valid yang dapat diimpor. Pastikan format CSV sesuai dan username belum terdaftar.");
       }
       e.target.value = null;
     };
@@ -1279,10 +1553,12 @@ const AdminDashboard = ({
     if(!window.confirm("Database Anda akan diisi dengan data contoh (Soal, Siswa, Ujian). Lanjutkan?")) return;
     try {
       const batch = writeBatch(db);
+      const seededQuestionIds = [];
       
       SEED_DATA.questions.forEach((q, index) => {
         const newRef = doc(getCollectionRef('questions'));
-        batch.set(newRef, { ...q, createdAt: Date.now() + index }); // Menambahkan urutan waktu
+        seededQuestionIds.push(newRef.id);
+        batch.set(newRef, { ...q, createdAt: Date.now() + index });
       });
       SEED_DATA.students.forEach(s => {
         const newRef = doc(getCollectionRef('students'));
@@ -1290,13 +1566,12 @@ const AdminDashboard = ({
       });
       SEED_DATA.exams.forEach(e => {
         const newRef = doc(getCollectionRef('exams'));
-        batch.set(newRef, e);
+        batch.set(newRef, { ...e, questionIds: seededQuestionIds });
       });
       SEED_DATA.admins.forEach(a => {
         const newRef = doc(getCollectionRef('admins'));
         batch.set(newRef, a);
       });
-      // Seed Contributor & Principal
       if (SEED_DATA.contributors) {
         SEED_DATA.contributors.forEach(c => {
            const newRef = doc(getCollectionRef('contributors'));
@@ -1318,51 +1593,57 @@ const AdminDashboard = ({
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
       <PrintStyles />
-      <nav className="bg-white border-b px-6 py-4 flex justify-between items-center sticky top-0 z-10 no-print">
+      <nav className="bg-white border-b px-4 md:px-6 py-4 flex flex-wrap justify-between items-center gap-3 sticky top-0 z-10 no-print">
         <div className="flex items-center space-x-3">
           <div className="bg-gray-800 p-2 rounded text-white"><Settings size={20} /></div>
-          <h1 className="text-xl font-bold">
-              {isPrincipal ? 'Panel Kepala Sekolah' : (isContributor ? 'Panel Kontributor' : 'Panel Admin')}
-          </h1>
+          <div>
+            <h1 className="text-lg md:text-xl font-bold leading-tight">
+                {isPrincipal ? 'Panel Kepala Sekolah' : (isContributor ? 'Panel Kontributor' : 'Panel Admin')}
+            </h1>
+            {currentUser?.name && (
+              <p className="text-xs text-gray-500">Login: <span className="font-semibold text-gray-700">{currentUser.name}</span></p>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           {!isContributor && !isPrincipal && (
-            <button onClick={handleSeedData} className="text-gray-500 hover:text-blue-600 text-xs flex items-center border px-2 py-1 rounded"><Database size={12} className="mr-1"/> Reset & Seed Data Awal</button>
+            <button onClick={handleSeedData} className="text-gray-500 hover:text-blue-600 text-xs flex items-center border px-2.5 py-1.5 rounded"><Database size={12} className="mr-1"/> Reset & Seed Data Awal</button>
           )}
-          <button onClick={onLogout} className="text-red-600 font-medium text-sm flex items-center"><LogOut size={16} className="mr-2"/> Keluar</button>
+          <button onClick={onLogout} className="text-red-600 font-medium text-sm flex items-center"><LogOut size={16} className="mr-1.5"/> Keluar</button>
         </div>
       </nav>
-      <div className="max-w-6xl mx-auto px-6 mt-6 no-print overflow-x-auto">
-        <div className="flex space-x-1 bg-gray-200 p-1 rounded-lg w-max md:w-fit">
+      <div className="max-w-6xl mx-auto px-4 md:px-6 mt-6 no-print">
+        <div className="flex flex-wrap gap-1 bg-gray-200 p-1.5 rounded-lg w-full">
           
           {/* Menu untuk Admin & Kontributor (KS Tidak Melihat Ini) */}
           {!isPrincipal && (
-             <button onClick={() => setActiveTab('questions')} className={`px-4 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'questions' ? 'bg-white shadow' : 'text-gray-600'}`}><List size={16} className="mr-2"/> Bank Soal</button>
+             <button onClick={() => setActiveTab('questions')} className={`px-3.5 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'questions' ? 'bg-white shadow text-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}><List size={16} className="mr-2"/> Bank Soal</button>
           )}
 
           {/* Menu Hanya untuk Admin */}
           {!isContributor && !isPrincipal && (
             <>
-              <button onClick={() => setActiveTab('exams')} className={`px-4 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'exams' ? 'bg-white shadow' : 'text-gray-600'}`}><Calendar size={16} className="mr-2"/> Paket Ujian</button>
-              <button onClick={() => setActiveTab('students')} className={`px-4 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'students' ? 'bg-white shadow' : 'text-gray-600'}`}><Users size={16} className="mr-2"/> Peserta</button>
+              <button onClick={() => setActiveTab('exams')} className={`px-3.5 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'exams' ? 'bg-white shadow text-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}><Calendar size={16} className="mr-2"/> Paket Ujian</button>
+              <button onClick={() => setActiveTab('students')} className={`px-3.5 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'students' ? 'bg-white shadow text-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}><Users size={16} className="mr-2"/> Peserta</button>
             </>
           )}
 
-          {/* Menu Pemantauan (Admin & KS) */}
+          {/* Menu Kartu Tes & Pemantauan (Admin & KS) */}
           {!isContributor && (
              <>
-                <button onClick={() => setActiveTab('monitoring')} className={`px-4 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'monitoring' ? 'bg-white shadow' : 'text-gray-600'}`}><Activity size={16} className="mr-2"/> Pemantauan</button>
-                <button onClick={() => setActiveTab('history')} className={`px-4 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'history' ? 'bg-white shadow' : 'text-gray-600'}`}><ClipboardList size={16} className="mr-2"/> Riwayat</button>
+                <button onClick={() => { setSelectedCardExamId(''); setActiveTab('cards'); }} className={`px-3.5 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'cards' ? 'bg-white shadow text-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}><IdCard size={16} className="mr-2"/> Kartu Tes</button>
+                <button onClick={() => setActiveTab('monitoring')} className={`px-3.5 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'monitoring' ? 'bg-white shadow text-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}><Activity size={16} className="mr-2"/> Pemantauan</button>
+                <button onClick={() => setActiveTab('history')} className={`px-3.5 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'history' ? 'bg-white shadow text-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}><ClipboardList size={16} className="mr-2"/> Riwayat</button>
              </>
           )}
 
           {/* Menu Tambahan Hanya Admin */}
           {!isContributor && !isPrincipal && (
               <>
-                <button onClick={() => setActiveTab('master')} className={`px-4 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'master' ? 'bg-white shadow' : 'text-gray-600'}`}><Database size={16} className="mr-2"/> Data Master</button>
-                <button onClick={() => setActiveTab('identitas')} className={`px-4 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'identitas' ? 'bg-white shadow' : 'text-gray-600'}`}><Building size={16} className="mr-2"/> Profil Sekolah</button>
-                <button onClick={() => setActiveTab('contributors')} className={`px-4 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'contributors' ? 'bg-white shadow' : 'text-gray-600'}`}><UsersCog size={16} className="mr-2"/> Kontributor</button>
-                <button onClick={() => setActiveTab('principals')} className={`px-4 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'principals' ? 'bg-white shadow' : 'text-gray-600'}`}><School size={16} className="mr-2"/> Kepala Sekolah</button>
+                <button onClick={() => setActiveTab('master')} className={`px-3.5 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'master' ? 'bg-white shadow text-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}><Database size={16} className="mr-2"/> Data Master</button>
+                <button onClick={() => setActiveTab('identitas')} className={`px-3.5 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'identitas' ? 'bg-white shadow text-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}><Building size={16} className="mr-2"/> Profil Sekolah</button>
+                <button onClick={() => setActiveTab('contributors')} className={`px-3.5 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'contributors' ? 'bg-white shadow text-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}><UsersCog size={16} className="mr-2"/> Kontributor</button>
+                <button onClick={() => setActiveTab('principals')} className={`px-3.5 py-2 rounded-md text-sm font-medium flex items-center ${activeTab === 'principals' ? 'bg-white shadow text-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}><School size={16} className="mr-2"/> Kepala Sekolah</button>
               </>
           )}
         </div>
@@ -1486,7 +1767,6 @@ const AdminDashboard = ({
                            <button onClick={(e) => { e.stopPropagation(); handleDeleteQ(q.id); }} className="text-red-600 bg-red-50 hover:bg-red-100 p-2 rounded transition" title="Hapus Soal"><Trash2 size={16}/></button>
                          </div>
                      </div>
-                     {/* Indikator klik (Bisa diklik untuk tutup/buka) */}
                      <div 
                          className="w-full text-center mt-3 pt-2 border-t border-dashed border-gray-200 cursor-pointer text-xs font-medium text-gray-400 hover:text-blue-500 transition-colors"
                          onClick={() => setExpandedQId(isExpanded ? null : q.id)}
@@ -1509,7 +1789,7 @@ const AdminDashboard = ({
                   </div>
                   <div>
                      <h2 className="text-2xl font-bold text-gray-800">Data Master</h2>
-                     <p className="text-sm text-gray-500">Kelola daftar pilihan otomatis Mata Pelajaran dan Kategori Soal.</p>
+                     <p className="text-sm text-gray-500">Kelola daftar pilihan otomatis Mata Pelajaran, Kategori Soal, dan Tingkatan Kelas.</p>
                   </div>
                </div>
                
@@ -1689,43 +1969,45 @@ const AdminDashboard = ({
                            <p className="text-xs text-gray-400 mt-1">Siswa hanya dapat mengerjakan ujian sebanyak jumlah ini.</p>
                        </div>
                    </div>
-                   <div className="bg-gray-50 p-4 rounded border">
-                       <h4 className="font-bold text-sm mb-3 text-gray-600">Sesi yang Diizinkan:</h4>
-                       <div className="flex gap-4 flex-wrap">
-                          {['1', '2', '3', '4'].map(ses => (
-                              <label key={ses} className="flex items-center bg-white border px-3 py-2 rounded cursor-pointer hover:bg-gray-50">
-                                  <input 
-                                    type="checkbox" 
-                                    checked={(examForm.allowedSessions || []).includes(ses)} 
-                                    onChange={() => toggleSession(ses)}
-                                    className="mr-2 w-4 h-4 accent-blue-600"
-                                  />
-                                  Sesi {ses}
-                              </label>
-                          ))}
-                       </div>
-                       <p className="text-xs text-gray-400 mt-2">Hanya siswa dengan sesi yang dicentang yang bisa masuk ujian ini.</p>
-                   </div>
+                   <div>
+                     <div className="bg-gray-50 p-4 rounded border">
+                         <h4 className="font-bold text-sm mb-3 text-gray-600">Sesi yang Diizinkan:</h4>
+                         <div className="flex gap-4 flex-wrap">
+                            {['1', '2', '3', '4'].map(ses => (
+                                <label key={ses} className="flex items-center bg-white border px-3 py-2 rounded cursor-pointer hover:bg-gray-50">
+                                    <input 
+                                      type="checkbox" 
+                                      checked={(examForm.allowedSessions || []).includes(ses)} 
+                                      onChange={() => toggleSession(ses)}
+                                      className="mr-2 w-4 h-4 accent-blue-600"
+                                    />
+                                    Sesi {ses}
+                                </label>
+                            ))}
+                         </div>
+                         <p className="text-xs text-gray-400 mt-2">Hanya siswa dengan sesi yang dicentang yang bisa masuk ujian ini.</p>
+                     </div>
 
-                   <div className="bg-gray-50 p-4 rounded border mt-4">
-                       <h4 className="font-bold text-sm mb-3 text-gray-600">Kelas yang Diizinkan:</h4>
-                       <div className="flex gap-2 flex-wrap max-h-32 overflow-y-auto">
-                          {(() => {
-                              if (allClassesMaster.length === 0) return <span className="text-sm text-gray-500">Belum ada data kelas. Tambahkan di Data Master atau Siswa.</span>;
-                              return allClassesMaster.map(cls => (
-                                  <label key={cls} className="flex items-center bg-white border px-3 py-2 rounded cursor-pointer hover:bg-gray-50 text-sm">
-                                      <input 
-                                        type="checkbox" 
-                                        checked={(examForm.allowedClasses || []).includes(cls)} 
-                                        onChange={() => toggleClassAllowed(cls)}
-                                        className="mr-2 w-4 h-4 accent-blue-600"
-                                      />
-                                      {cls}
-                                  </label>
-                              ));
-                          })()}
-                       </div>
-                       <p className="text-xs text-gray-400 mt-2">Biarkan KOSONG jika semua kelas diizinkan.</p>
+                     <div className="bg-gray-50 p-4 rounded border mt-4">
+                         <h4 className="font-bold text-sm mb-3 text-gray-600">Kelas yang Diizinkan:</h4>
+                         <div className="flex gap-2 flex-wrap max-h-32 overflow-y-auto">
+                            {(() => {
+                                if (allClassesMaster.length === 0) return <span className="text-sm text-gray-500">Belum ada data kelas. Tambahkan di Data Master atau Siswa.</span>;
+                                return allClassesMaster.map(cls => (
+                                    <label key={cls} className="flex items-center bg-white border px-3 py-2 rounded cursor-pointer hover:bg-gray-50 text-sm">
+                                        <input 
+                                          type="checkbox" 
+                                          checked={(examForm.allowedClasses || []).includes(cls)} 
+                                          onChange={() => toggleClassAllowed(cls)}
+                                          className="mr-2 w-4 h-4 accent-blue-600"
+                                        />
+                                        {cls}
+                                    </label>
+                                ));
+                            })()}
+                         </div>
+                         <p className="text-xs text-gray-400 mt-2">Biarkan KOSONG jika semua kelas diizinkan.</p>
+                     </div>
                    </div>
                 </div>
                 <div className="border-t pt-4">
@@ -1746,7 +2028,7 @@ const AdminDashboard = ({
                    </div>
 
                    <div className="max-h-72 overflow-y-auto border rounded divide-y bg-gray-50">
-                     {availableQuestionsForExam.map((q,i)=>(
+                     {availableQuestionsForExam.map((q)=>(
                        <div key={q.id} onClick={()=>toggleQuestionSelection(q.id)} className={`p-3 flex items-start cursor-pointer hover:bg-blue-50 transition-colors ${examForm.questionIds.includes(q.id)?'bg-blue-50 border-l-4 border-blue-500':'bg-white border-l-4 border-transparent'}`}>
                          <input type="checkbox" checked={examForm.questionIds.includes(q.id)} readOnly className="mr-3 mt-1 w-4 h-4 accent-blue-600 cursor-pointer"/> 
                          <div className="overflow-hidden flex-1">
@@ -1766,8 +2048,14 @@ const AdminDashboard = ({
              </div>
           ) : (
             <>
-              <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold">Daftar Paket</h2><button onClick={() => openExamForm()} className="bg-green-600 text-white px-4 py-2 rounded flex items-center"><Plus size={18} className="mr-2"/> Buat Baru</button></div>
-              <div className="grid gap-4">{exams.map((exam) => {const isActive = exam.isActive; return (<div key={exam.id} className={`bg-white p-6 rounded-lg border-2 ${isActive ? 'border-green-500 shadow-md' : 'border-gray-100'}`}><div className="flex justify-between items-start"><div><h3 className="font-bold text-lg">{exam.title} <span className="text-sm font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded border ml-2">Kode: <strong>{exam.examCode || '-'}</strong></span></h3>{isActive && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold mt-1 inline-block">AKTIF</span>}<p className="text-sm text-gray-500 mt-1">{exam.duration} Menit • {exam.maxQuestionsToDisplay ? <span className="font-bold text-blue-600">{exam.maxQuestionsToDisplay} (dari {exam.questionIds.length})</span> : exam.questionIds.length} Soal • Sesi: {(exam.allowedSessions || []).join(', ')} • Max: {exam.maxAttempts || 1}x{(exam.allowedClasses && exam.allowedClasses.length > 0) ? ` • Kelas: ${exam.allowedClasses.join(', ')}` : ''}</p></div><div className="flex gap-2"><button onClick={() => toggleExamStatus(exam)} className={`px-3 py-1 rounded text-sm font-bold flex items-center ${isActive ? 'bg-red-100 text-red-700' : 'bg-gray-100 hover:bg-green-100 text-gray-700 hover:text-green-700'}`}>{isActive ? <><StopCircle size={14} className="mr-1"/> Stop</> : <><PlayCircle size={14} className="mr-1"/> Mulai</>}</button><button onClick={()=>openExamForm(exam)} className="p-2 text-blue-500"><Edit size={16}/></button><button onClick={()=>handleDeleteExam(exam.id)} className="p-2 text-red-500"><Trash2 size={16}/></button></div></div></div>);})}</div>
+              <div className="flex flex-wrap justify-between items-center mb-6 gap-2">
+                <h2 className="text-2xl font-bold">Daftar Paket</h2>
+                <div className="flex gap-2">
+                  <button onClick={() => { setSelectedCardExamId(''); setActiveTab('cards'); }} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center text-sm font-medium"><IdCard size={18} className="mr-2"/> Cetak Kartu Tes</button>
+                  <button onClick={() => openExamForm()} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded flex items-center text-sm font-medium"><Plus size={18} className="mr-2"/> Buat Baru</button>
+                </div>
+              </div>
+              <div className="grid gap-4">{exams.map((exam) => {const isActive = exam.isActive; const qTotal = (exam.questionIds || []).length; return (<div key={exam.id} className={`bg-white p-6 rounded-lg border-2 ${isActive ? 'border-green-500 shadow-md' : 'border-gray-100'}`}><div className="flex flex-col md:flex-row justify-between items-start gap-4"><div><h3 className="font-bold text-lg">{exam.title} <span className="text-sm font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded border ml-2">Kode: <strong>{exam.examCode || '-'}</strong></span></h3>{isActive && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold mt-1 inline-block">AKTIF</span>}<p className="text-sm text-gray-500 mt-1">{exam.duration} Menit • {exam.maxQuestionsToDisplay ? <span className="font-bold text-blue-600">{exam.maxQuestionsToDisplay} (dari {qTotal})</span> : qTotal} Soal • Sesi: {(exam.allowedSessions || []).join(', ')} • Max: {exam.maxAttempts || 1}x{(exam.allowedClasses && exam.allowedClasses.length > 0) ? ` • Kelas: ${exam.allowedClasses.join(', ')}` : ''}</p></div><div className="flex gap-2 flex-wrap"><button onClick={() => { setSelectedCardExamId(exam.id); setActiveTab('cards'); }} className="px-3 py-1 rounded text-sm font-bold flex items-center bg-blue-50 hover:bg-blue-100 text-blue-700" title="Cetak Kartu Tes Ujian Ini"><IdCard size={14} className="mr-1"/> Kartu Tes</button><button onClick={() => toggleExamStatus(exam)} className={`px-3 py-1 rounded text-sm font-bold flex items-center ${isActive ? 'bg-red-100 text-red-700' : 'bg-gray-100 hover:bg-green-100 text-gray-700 hover:text-green-700'}`}>{isActive ? <><StopCircle size={14} className="mr-1"/> Stop</> : <><PlayCircle size={14} className="mr-1"/> Mulai</>}</button><button onClick={()=>openExamForm(exam)} className="p-2 text-blue-500"><Edit size={16}/></button><button onClick={()=>handleDeleteExam(exam.id)} className="p-2 text-red-500"><Trash2 size={16}/></button></div></div></div>);})}</div>
             </>
         ))}
         {activeTab === 'students' && !isContributor && !isPrincipal && (isEditingStudent ? (
@@ -1798,7 +2086,7 @@ const AdminDashboard = ({
              </div>
           ) : (
             <>
-              <div className="flex justify-between items-center mb-6">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div>
                   <h2 className="text-2xl font-bold">Data Peserta</h2>
                   <div className="flex items-center mt-2 text-sm text-gray-500 gap-2">
@@ -1810,10 +2098,27 @@ const AdminDashboard = ({
                       </select>
                   </div>
                 </div>
-                <div className="flex gap-2 self-start mt-1">
+                <div className="flex gap-2 flex-wrap">
                   <input type="file" accept=".csv" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
-                  <button onClick={handleImportClick} className="bg-green-600 text-white px-3 py-2 rounded flex items-center text-sm"><Upload size={16} className="mr-2"/> Impor CSV</button>
-                  <button onClick={()=> {setStudentForm({name:'', username:'', password:'', class: '', session: '1', isActive: true}); setIsEditingStudent(true);}} className="bg-blue-600 text-white px-3 py-2 rounded flex items-center text-sm"><Plus size={16} className="mr-2"/> Tambah</button>
+                  
+                  <button 
+                    onClick={() => alert("FORMAT FILE CSV YANG BENAR:\n\nKolom 1: Nama Lengkap\nKolom 2: Kelas\nKolom 3: Username\nKolom 4: Password\nKolom 5: Sesi\n\nCONTOH ISI:\nBudi Santoso, XII-A, budi01, pass123, 1\nSiti Aminah, XII-B, siti02, pass123, 2\n\nCatatan:\n- Gunakan pemisah koma (,)\n- Baris pertama (judul kolom) akan diabaikan otomatis oleh sistem.")} 
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded flex items-center text-sm font-bold border"
+                  >
+                    <AlertCircle size={16} className="mr-2 text-blue-500"/> Info Format CSV
+                  </button>
+                  
+                  <button onClick={handleImportClick} className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded flex items-center text-sm transition-colors">
+                    <Upload size={16} className="mr-2"/> Impor CSV
+                  </button>
+
+                  <button onClick={() => setActiveTab('cards')} className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded flex items-center text-sm transition-colors">
+                    <IdCard size={16} className="mr-2"/> Cetak Kartu Tes
+                  </button>
+                  
+                  <button onClick={()=> {setStudentForm({name:'', username:'', password:'', class: '', session: '1', isActive: true}); setIsEditingStudent(true);}} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded flex items-center text-sm transition-colors">
+                    <Plus size={16} className="mr-2"/> Tambah Siswa
+                  </button>
                 </div>
               </div>
               <div className="bg-white shadow rounded-lg overflow-hidden border overflow-x-auto">
@@ -1859,6 +2164,15 @@ const AdminDashboard = ({
               </div>
             </>
         ))}
+        {activeTab === 'cards' && !isContributor && (
+          <ExamCardsView
+            exams={exams}
+            students={students}
+            identity={identity}
+            allClassesMaster={allClassesMaster}
+            initialExamId={selectedCardExamId}
+          />
+        )}
         {activeTab === 'contributors' && !isContributor && !isPrincipal && (isEditingContributor ? (
              <div className="bg-white p-6 rounded-lg shadow max-w-md mx-auto">
                <h3 className="font-bold mb-4">{contributorForm.id ? 'Edit' : 'Tambah'} Kontributor</h3>
@@ -1895,6 +2209,42 @@ const AdminDashboard = ({
               </div>
             </>
         ))}
+        {activeTab === 'principals' && !isContributor && !isPrincipal && (isEditingPrincipal ? (
+             <div className="bg-white p-6 rounded-lg shadow max-w-md mx-auto">
+               <h3 className="font-bold mb-4">{principalForm.id ? 'Edit' : 'Tambah'} Kepala Sekolah</h3>
+               <div className="space-y-3">
+                 <input value={principalForm.name} onChange={e=>setPrincipalForm({...principalForm, name:e.target.value})} className="border p-2 w-full rounded" placeholder="Nama Kepala Sekolah"/>
+                 <input value={principalForm.username} onChange={e=>setPrincipalForm({...principalForm, username:e.target.value})} className="border p-2 w-full rounded" placeholder="Username (Login)"/>
+                 <input value={principalForm.password} onChange={e=>setPrincipalForm({...principalForm, password:e.target.value})} className="border p-2 w-full rounded" placeholder="Password"/>
+               </div>
+               <div className="mt-4 flex justify-end gap-2"><button onClick={()=>setIsEditingPrincipal(false)} className="px-3 py-2 border rounded">Batal</button><button onClick={handleSavePrincipal} className="px-3 py-2 bg-blue-600 text-white rounded">Simpan</button></div>
+             </div>
+          ) : (
+            <>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">Daftar Akun Kepala Sekolah</h2>
+                <button onClick={()=> {setPrincipalForm({name:'', username:'', password:''}); setIsEditingPrincipal(true);}} className="bg-blue-600 text-white px-3 py-2 rounded flex items-center text-sm"><Plus size={16} className="mr-2"/> Tambah Kepala Sekolah</button>
+              </div>
+              <div className="bg-white shadow rounded-lg overflow-hidden border overflow-x-auto">
+                <table className="w-full text-left text-sm min-w-[600px]">
+                    <thead className="bg-gray-50 font-bold"><tr><th className="p-4">Nama</th><th className="p-4">Username</th><th className="p-4 text-center">Aksi</th></tr></thead>
+                    <tbody className="divide-y">
+                        {(principals || []).map(p => (
+                            <tr key={p.id} className="hover:bg-gray-50">
+                                <td className="p-4">{p.name}</td>
+                                <td className="p-4 font-mono text-gray-600">{p.username}</td>
+                                <td className="p-4 text-center space-x-2">
+                                    <button onClick={() => {setPrincipalForm({...p}); setIsEditingPrincipal(true);}} className="text-blue-600"><Edit size={16}/></button>
+                                    <button onClick={() => handleDeletePrincipal(p.id)} className="text-red-600"><Trash2 size={16}/></button>
+                                </td>
+                            </tr>
+                        ))}
+                        {(principals || []).length === 0 && <tr><td colSpan="3" className="p-4 text-center text-gray-400">Belum ada akun kepala sekolah.</td></tr>}
+                    </tbody>
+                </table>
+              </div>
+            </>
+        ))}
         {activeTab === 'identitas' && !isContributor && !isPrincipal && (
             <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200 max-w-2xl mx-auto">
                <div className="flex items-center mb-6 border-b pb-4">
@@ -1903,7 +2253,7 @@ const AdminDashboard = ({
                   </div>
                   <div>
                      <h2 className="text-2xl font-bold text-gray-800">Profil & Identitas Sekolah</h2>
-                     <p className="text-sm text-gray-500">Digunakan untuk kop surat pada laporan ujian.</p>
+                     <p className="text-sm text-gray-500">Digunakan untuk kop surat pada laporan ujian dan kartu tes.</p>
                   </div>
                </div>
                
@@ -1919,7 +2269,7 @@ const AdminDashboard = ({
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                        <div>
                           <label className="block text-sm font-bold text-gray-700 mb-1">Tahun Pelajaran</label>
-                          <input value={identitasForm.tahunPelajaran || ''} onChange={e=>setIdentitasForm({...identitasForm, tahunPelajaran: e.target.value})} className="border border-gray-300 p-2.5 w-full rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="Misal: 2023/2024"/>
+                          <input value={identitasForm.tahunPelajaran || ''} onChange={e=>setIdentitasForm({...identitasForm, tahunPelajaran: e.target.value})} className="border border-gray-300 p-2.5 w-full rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="Misal: 2026/2027"/>
                        </div>
                        <div>
                           <label className="block text-sm font-bold text-gray-700 mb-1">Semester</label>
@@ -2011,7 +2361,7 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
     }
 
     if (activeExam && questions.length > 0) {
-      if (processedQuestions.length > 0) return; // Cegah re-inisialisasi jika sudah ada
+      if (processedQuestions.length > 0) return;
 
       const storageKey = `exam_data_${currentUser.id}_${activeExam.id}`;
       const savedDataStr = localStorage.getItem(storageKey);
@@ -2020,14 +2370,13 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
       if (savedDataStr) {
           try {
               const savedData = JSON.parse(savedDataStr);
-              // Pastikan data yang tersimpan valid dan tidak kosong
               if (savedData.processedQuestions && savedData.processedQuestions.length > 0) {
                   setProcessedQuestions(savedData.processedQuestions);
                   setAnswers(savedData.answers || {});
                   setRaguRagu(savedData.raguRagu || {});
                   setTimeLeft(savedData.timeLeft);
                   setResultId(savedData.resultId || `${activeExam.id}_${currentUser.id}_${Date.now()}`);
-                  return; // SUCCESSFUL RESTORE: Keluar dari useEffect ini, jangan timpa datanya!
+                  return;
               }
           } catch (e) { console.error("Gagal memulihkan data ujian:", e); }
       }
@@ -2038,12 +2387,10 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
       const displayCount = parseInt(activeExam.maxQuestionsToDisplay) || 0;
       const needsRandomSubset = displayCount > 0 && displayCount < qList.length;
 
-      // Jika diset acak soal ATAU jika butuh mengambil sebagian soal secara acak
       if (activeExam.randomizeQuestions || needsRandomSubset) {
           qList = shuffleArray(qList);
       }
 
-      // Potong daftar soal sesuai batas maksimal yang diminta
       if (needsRandomSubset) {
           qList = qList.slice(0, displayCount);
       }
@@ -2116,7 +2463,6 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
   // EFFECT 5: TRACK FULLSCREEN
   useEffect(() => {
       const checkFs = () => setIsFullscreen(!!document.fullscreenElement);
-      // Pengecekan pertama kali (saat re-render setelah refresh)
       checkFs();
       document.addEventListener('fullscreenchange', checkFs);
       return () => document.removeEventListener('fullscreenchange', checkFs);
@@ -2127,12 +2473,10 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
     if (!activeExam || examFinished) return;
 
     const handleVisibilityChange = () => {
-      // Jika pengguna berpindah tab atau mengecilkan browser
       if (document.hidden) setIsViolating(true);
     };
 
     const handleWindowBlur = () => {
-      // Jika pengguna mengklik aplikasi lain di luar jendela browser ini
       setIsViolating(true);
     };
 
@@ -2310,7 +2654,7 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
     );
   }
 
-  // TAMPILAN NETRAL UNTUK REFRESH (Karena browser mematikan fullscreen saat direfresh)
+  // TAMPILAN NETRAL UNTUK REFRESH
   if (!isFullscreen && !examFinished) {
     return (
         <div className="h-screen flex flex-col items-center justify-center bg-gray-900 p-4 z-50 fixed inset-0 backdrop-blur-sm bg-opacity-95">
@@ -2336,7 +2680,6 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
   const currentQuestion = processedQuestions[currentQuestionIndex];
   const currentAns = answers[currentQuestion.id];
 
-  // Pengecekan apakah soal ini memiliki stimulus yang valid untuk ditampilkan
   const hasStimulus = currentQuestion?.stimulus && (
       (currentQuestion.stimulus.title && currentQuestion.stimulus.title.trim() !== '') ||
       (currentQuestion.stimulus.content && currentQuestion.stimulus.content.trim() !== '') ||
@@ -2344,13 +2687,11 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
   );
 
   return (
-    // Gunakan h-[100dvh] untuk mobile browser (address bar issue)
     <div className="flex flex-col h-screen h-[100dvh] bg-gray-100 font-sans text-gray-800 overflow-hidden">
       <header className="bg-[#2d3748] text-white h-16 flex items-center justify-between px-4 shadow z-20 shrink-0">
         <div className="flex items-center space-x-4"><div className="bg-blue-600 w-10 h-10 rounded flex items-center justify-center font-bold text-xl">A</div><div><h1 className="font-semibold text-lg">{activeExam.title}</h1><p className="text-xs text-gray-400">Peserta: {currentUser.name} ({currentUser.class || '-'}) - Sesi {currentUser.session || '1'}</p></div></div>
         <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center bg-gray-700 px-3 py-1.5 rounded-full border border-gray-600 font-mono"><Clock className="w-4 h-4 mr-2 text-yellow-400" />{Math.floor(timeLeft/60).toString().padStart(2,'0')}:{(timeLeft%60).toString().padStart(2,'0')}</div>
-            {/* Tombol Menu Mobile */}
             <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-2 rounded hover:bg-gray-700"><Menu/></button>
         </div>
       </header>
@@ -2362,7 +2703,6 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
 
       <div className="flex flex-1 overflow-hidden relative">
         <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
-          {/* Stimulus Section (Kiri/Atas) - Hanya tampil jika ada stimulus */}
           {hasStimulus && (
             <div className="md:w-1/2 w-full h-1/2 md:h-full overflow-y-auto border-r bg-white p-6">
                 <div className="max-w-3xl mx-auto">
@@ -2374,7 +2714,6 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
             </div>
           )}
 
-          {/* Soal Section (Kanan/Bawah) - Melebar penuh jika stimulus kosong */}
           <div className={`${hasStimulus ? 'md:w-1/2 h-1/2 md:h-full' : 'w-full h-full'} w-full overflow-y-auto bg-[#f7fafc] p-6`}>
               <div className={`${hasStimulus ? 'max-w-2xl' : 'max-w-4xl'} mx-auto pb-20`}>
                   <div className="flex justify-between items-start mb-4">
@@ -2448,7 +2787,6 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
             </div>
             <div className="flex-1 overflow-y-auto p-4 grid grid-cols-5 gap-2 content-start">
                 {processedQuestions.map((q, idx) => {
-                    // Logic Cek Jawaban:
                     let hasAns = false;
                     const ansData = answers[q.id];
                     if (q.type === 'single' || q.type === 'multiple') {
@@ -2497,14 +2835,12 @@ const StudentExam = ({ questions, activeExam, currentUser, onLogout, results, on
 
 // --- STUDENT DASHBOARD (KODE UJIAN) ---
 const StudentDashboard = ({ questions, exams, currentUser, onLogout, results }) => {
-    // Membaca local storage secara sinkron pada saat komponen pertama kali diinisialisasi
-    // Hal ini berguna untuk mem-bypass splash screen seketika saat halamannya di-refresh
     const [selectedExamId, setSelectedExamId] = useState(() => {
+        const prefix = `exam_data_${currentUser.id}_`;
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
-            if (key && key.startsWith(`exam_data_${currentUser.id}_`)) {
-                const examId = key.split('_')[3]; // mendapatkan id ujian
-                // Validasi: Pastikan ujian yang di-resume ini MASIH AKTIF
+            if (key && key.startsWith(prefix)) {
+                const examId = key.slice(prefix.length);
                 const match = exams.find(e => e.id === examId);
                 if (match && match.isActive) {
                     return examId;
@@ -2517,12 +2853,10 @@ const StudentDashboard = ({ questions, exams, currentUser, onLogout, results }) 
     const [inputCode, setInputCode] = useState('');
     const [error, setError] = useState('');
 
-    // Fallback Cek Firebase (Hanya jika belum ketemu di local storage)
     useEffect(() => {
         if (!selectedExamId) {
             const ongoing = results.find(r => r.studentId === currentUser.id && r.status === 'ongoing');
             if (ongoing) {
-                // Validasi: Pastikan ujian yang di-resume ini MASIH AKTIF
                 const match = exams.find(e => e.id === ongoing.examId);
                 if (match && match.isActive) {
                     setSelectedExamId(ongoing.examId);
@@ -2595,10 +2929,9 @@ const StudentDashboard = ({ questions, exams, currentUser, onLogout, results }) 
 
 // --- APP UTAMA ---
 export default function App() {
-  useTailwind(); // Inject Tailwind otomatis
+  useTailwind();
   
   const [user, setUser] = useState(() => {
-    // Cek status login saat halaman pertama kali dimuat (mencegah logout saat refresh)
     try {
       const savedUser = localStorage.getItem('simase_user');
       return savedUser ? JSON.parse(savedUser) : null;
@@ -2638,7 +2971,6 @@ export default function App() {
   const loading = qLoading || eLoading || sLoading || aLoading || cLoading || pLoading || setLoading;
   const identity = (settingsData || []).find(s => s.id === 'identity') || {};
   
-  // Mengambil Master Data (Metadata) untuk Mapel dan Kategori Soal
   const metadata = (settingsData || []).find(s => s.id === 'metadata') || {
       subjects: ['Matematika', 'Bahasa Indonesia', 'Bahasa Inggris', 'IPA', 'IPS', 'Umum'],
       categories: ['Literasi Membaca', 'Numerasi', 'Literasi Sains', 'Survei Karakter', 'Pilihan Ganda Biasa'],
@@ -2648,13 +2980,11 @@ export default function App() {
   const handleLogin = (role, userData) => {
     const newUser = { role, ...userData };
     setUser(newUser);
-    // Simpan status login ke LocalStorage
     localStorage.setItem('simase_user', JSON.stringify(newUser));
   };
 
   const handleLogout = () => {
     setUser(null);
-    // Hapus status login dari LocalStorage
     localStorage.removeItem('simase_user');
   };
 
@@ -2669,7 +2999,6 @@ export default function App() {
       );
   }
 
-  // Render Dashboard Admin untuk Admin (Full) atau Contributor (Limited) atau Principal (Monitoring)
   if (user.role === 'admin' || user.role === 'contributor' || user.role === 'principal') return <AdminDashboard 
     questions={questions} 
     exams={exams} 
@@ -2680,7 +3009,8 @@ export default function App() {
     identity={identity}
     metadata={metadata}
     onLogout={handleLogout} 
-    userRole={user.role} 
+    userRole={user.role}
+    currentUser={user}
   />;
 
   if (user.role === 'student') return <StudentDashboard 
